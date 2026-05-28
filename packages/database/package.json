@@ -16,7 +16,7 @@
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
-    "db:seed": "tsx src/seed.ts"
+    "db:seed": "ts-node --esm src/seed.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.14.0"
@@ -24,10 +24,20 @@
   "devDependencies": {
     "@types/node": "^20.11.0",
     "prisma": "^5.14.0",
+    "ts-node": "^10.9.2",
     "tsx": "^4.11.0",
     "typescript": "^5.4.0"
   },
   "engines": {
     "node": ">=20.0.0"
+  },
+  "ts-node": {
+    "compilerOptions": {
+      "module": "ESNext",
+      "moduleResolution": "Node",
+      "target": "ES2020",
+      "esModuleInterop": true,
+      "allowSyntheticDefaultImports": true
+    }
   }
 }

@@ -15,7 +15,7 @@
     "db:push": "pnpm -F @forensiq/database exec prisma db push",
     "db:migrate": "pnpm -F @forensiq/database exec prisma migrate dev",
     "db:studio": "pnpm -F @forensiq/database exec prisma studio",
-    "db:seed": "pnpm -F @forensiq/database exec tsx src/seed.ts",
+    "db:seed": "pnpm -F @forensiq/database exec ts-node --esm src/seed.ts",
     "db:reset": "pnpm -F @forensiq/database exec prisma migrate reset --force",
     "setup": "bash setup.sh",
     "setup:local": "node scripts/setup-local.js",
