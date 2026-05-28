@@ -9,6 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
+import { FileUploadComponent } from '@/components/file-upload';
+import { RecentImports } from '@/components/recent-imports';
 import {
   ArrowLeft, FileText, AlertTriangle, Upload, Play, StickyNote, Paperclip,
   Eye, Clock, CheckCircle, MessageSquare, Loader2
@@ -45,6 +47,7 @@ export default function CaseWorkspacePage() {
   const [dashboard, setDashboard] = useState<CaseDashboard | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRunningFlags, setIsRunningFlags] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const fetchDashboard = useCallback(async () => {
     try {
@@ -314,7 +317,19 @@ export default function CaseWorkspacePage() {
             </Card>
 
             <Card>
-              <CardHeader>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg">Upload Files</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <FileUploadComponent 
+                  caseId={caseId} 
+                  onUploadComplete={() => setRefreshKey(k => k + 1)}
+                />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
                 <CardTitle className="text-lg">Summary</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2 text-sm">
@@ -332,6 +347,8 @@ export default function CaseWorkspacePage() {
                 </div>
               </CardContent>
             </Card>
+
+            <RecentImports key={refreshKey} caseId={caseId} limit={3} />
           </div>
         </div>
       </main>
