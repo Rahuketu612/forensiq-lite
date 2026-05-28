@@ -61,6 +61,16 @@ enum ImportStatus {
   PROCESSING
   COMPLETED
   FAILED
+  
+  // PDF Processing
+  EXTRACTED_TEXT       // PDF text extracted, awaiting mapping
+  NEEDS_MANUAL_MAPPING // Columns could not be auto-detected
+  
+  // OCR Status
+  OCR_PENDING
+  OCR_PROCESSING
+  OCR_COMPLETED
+  OCR_FAILED
 }
 
 enum RedFlagSeverity {
@@ -196,6 +206,16 @@ model TransactionImport {
   successRows Int @default(0)
   failedRows  Int @default(0)
   errorLog    Json?
+
+  // PDF/OCR Processing
+  hasText       Boolean @default(false)     // PDF has selectable text
+  extractedText String?                     // Raw extracted text from PDF
+  isScanned     Boolean @default(false)     // PDF is scanned (needs OCR)
+  
+  // OCR Results
+  ocrText        String?
+  ocrConfidence  Float?                     // 0-100 confidence score
+  ocrCompletedAt DateTime?
 
   // Relations
   transactions Transaction[]

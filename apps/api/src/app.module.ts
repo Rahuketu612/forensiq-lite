@@ -9,6 +9,7 @@ import { TransactionsModule } from './modules/transactions/transactions.module';
 import { RedFlagsModule } from './modules/red-flags/red-flags.module';
 import { InvestigationModule } from './modules/investigation/investigation.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { PdfModule } from './modules/pdf/pdf.module';
 import { JwtAuthGuard, RolesGuard } from './modules/auth/guards';
 
 @Module({
@@ -34,6 +35,7 @@ import { JwtAuthGuard, RolesGuard } from './modules/auth/guards';
     RedFlagsModule,
     InvestigationModule,
     DashboardModule,
+    PdfModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },
