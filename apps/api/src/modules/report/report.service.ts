@@ -1,5 +1,5 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
-import { prisma, RedFlagSeverity, ImportStatus } from '@forensiq/database';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { prisma, RedFlagSeverity } from '@forensiq/database';
 import {
   InvestigationReportDto,
   CaseSummaryDto,
