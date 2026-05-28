@@ -127,6 +127,11 @@ dist
 
 # pnpm
 .pnpm-store
+.pnpm-workspace.yaml
+
+# Turborepo
+.turbo/
+tsconfig.tsbuildinfo
 
 # yarn v3
 .pnp.*

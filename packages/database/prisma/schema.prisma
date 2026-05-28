@@ -1,0 +1,355 @@
+// ForensiQ Lite - Prisma Database Schema
+// MVP Architecture - Simplified & Clean
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// ENUMS
+// ============================================
+
+enum UserRole {
+  ADMIN
+  AUDITOR
+  VIEWER
+}
+
+enum CaseStatus {
+  DRAFT
+  ACTIVE
+  UNDER_REVIEW
+  CLOSED
+}
+
+enum TransactionType {
+  CREDIT
+  DEBIT
+  TRANSFER
+  REFUND
+  FEE
+  OTHER
+}
+
+enum TransactionMode {
+  CASH
+  CHEQUE
+  NEFT
+  RTGS
+  UPI
+  IMPS
+  ONLINE
+  CARD
+  BANK
+  OTHER
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ImportStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum RedFlagSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ReviewStatus {
+  PENDING
+  REVIEWED
+  DISMISSED
+}
+
+enum FeedbackType {
+  IMPORTANT
+  FALSE_POSITIVE
+  NEEDS_EVIDENCE
+  IGNORE
+}
+
+// ============================================
+// MODELS
+// ============================================
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  password  String
+  role      UserRole @default(AUDITOR)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Auth
+  passwordResetToken  String?
+  passwordResetExpires DateTime?
+  lastLoginAt DateTime?
+  lastLoginIp String?
+
+  // Relations
+  cases            Case[]            @relation("CreatedCases")
+  assignedCases    Case[]            @relation("AssignedCases")
+  redFlags         RedFlag[]
+  redFlagFeedback  RedFlagFeedback[]
+  notes            InvestigationNote[]
+  evidenceFiles    EvidenceFile[]
+
+  @@index([email])
+}
+
+model Case {
+  id          String     @id @default(cuid())
+  caseNumber  String     @unique
+  title       String
+  description String?
+  status      CaseStatus @default(DRAFT)
+  riskLevel   RiskLevel?
+
+  // Client
+  clientName    String?
+  clientEmail   String?
+  clientPhone   String?
+  clientAddress String?
+
+  // Assignment
+  assignedToId String?
+  assignedTo   User?  @relation("AssignedCases", fields: [assignedToId], references: [id])
+  assignedAt   DateTime?
+
+  // Audit Trail
+  createdBy   User   @relation("CreatedCases", fields: [createdById], references: [id])
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  completedAt DateTime?
+
+  // Relations
+  transactions   TransactionImport[]
+  redFlags      RedFlag[]
+  redFlagRules  RedFlagRule[]
+  notes         InvestigationNote[]
+  evidenceFiles EvidenceFile[]
+
+  @@index([caseNumber])
+  @@index([status])
+  @@index([createdById])
+}
+
+model TransactionImport {
+  id        String   @id @default(cuid())
+  caseId    String
+  case      Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  // Import reference
+  fileName     String
+  originalName String
+  mimeType    String
+  importedBy   User   @relation(fields: [importedById], references: [id])
+  importedById String
+  importedAt   DateTime @default(now())
+
+  // Status
+  status      ImportStatus @default(PENDING)
+  totalRows   Int @default(0)
+  successRows Int @default(0)
+  failedRows  Int @default(0)
+  errorLog    Json?
+
+  // Relations
+  transactions Transaction[]
+
+  @@index([caseId])
+  @@index([status])
+}
+
+model Transaction {
+  id              String           @id @default(cuid())
+  importId        String
+  import          TransactionImport @relation(fields: [importId], references: [id], onDelete: Cascade)
+  caseId          String
+
+  // Core Data
+  date        DateTime
+  description String?
+  amount      Float
+  type        TransactionType
+  balance     Float?
+
+  // Categorization
+  counterparty  String?
+  mode          TransactionMode @default(OTHER)
+  category      String?
+  subcategory   String?
+
+  // Import tracking
+  rowNumber Int?
+  rawData   Json?
+
+  // Normalization
+  normalizedDate         DateTime?
+  normalizedAmount      Float?
+  normalizedDescription String?
+
+  // Risk (for MVP, simple risk tracking)
+  riskScore   Float    @default(0)
+  riskFactors String[] @default([])
+
+  createdAt DateTime @default(now())
+
+  // Relations
+  redFlags RedFlag[]
+
+  @@index([caseId])
+  @@index([importId])
+  @@index([date])
+  @@index([type])
+}
+
+model RedFlagRule {
+  id        String   @id @default(cuid())
+  caseId    String
+  case      Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  name        String   // Rule name like "Large Transaction", "Structuring"
+  description String   // Rule description
+  isActive   Boolean  @default(true)
+  priority   Int      @default(0) // Higher = more important
+
+  // Rule parameters (stored as JSON for flexibility)
+  parameters Json?    // e.g., { "minAmount": 100000, "maxAmount": 500000 }
+
+  // Conditions
+  conditionType  String?  // AMOUNT, FREQUENCY, PATTERN, etc.
+  conditionValue String?  // Threshold value
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  redFlags RedFlag[]
+
+  @@index([caseId])
+}
+
+model RedFlag {
+  id        String   @id @default(cuid())
+  caseId    String
+  case      Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  ruleId    String?
+  rule      RedFlagRule? @relation(fields: [ruleId], references: [id])
+  ruleName  String   // Denormalized rule name for quick display
+  transactionId String
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  // Flag details
+  explanation String          // Explanation of why this was flagged
+  severity    RedFlagSeverity @default(MEDIUM)
+
+  // Review tracking
+  reviewed    Boolean       @default(false)
+  reviewStatus ReviewStatus  @default(PENDING)
+  reviewedBy   String?
+  reviewedAt   DateTime?
+
+  // Feedback
+  feedbackType  FeedbackType?
+  feedbackNote  String?
+  feedbackBy    User?   @relation(fields: [feedbackById], references: [id])
+  feedbackById  String?
+  feedbackAt    DateTime?
+
+  createdAt DateTime @default(now())
+
+  // Relations
+  evidenceFiles EvidenceFile[]
+  feedbackHistory RedFlagFeedback[]
+
+  @@index([caseId])
+  @@index([transactionId])
+  @@index([severity])
+  @@index([reviewStatus])
+}
+
+model RedFlagFeedback {
+  id        String   @id @default(cuid())
+  redFlagId String
+  redFlag   RedFlag  @relation(fields: [redFlagId], references: [id], onDelete: Cascade)
+
+  type      FeedbackType
+  note      String?
+
+  // User tracking
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@index([redFlagId])
+  @@index([userId])
+}
+
+model InvestigationNote {
+  id        String   @id @default(cuid())
+  caseId    String
+  case      Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  content   String   // Note content
+
+  // Author
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
+
+  // Optional link to transaction
+  transactionId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([caseId])
+  @@index([authorId])
+}
+
+model EvidenceFile {
+  id        String   @id @default(cuid())
+  caseId    String
+  case      Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  // File info
+  fileName     String
+  originalName String
+  mimeType     String
+  size         Int      // File size in bytes
+  path         String   // Storage path
+
+  // Description
+  description String?
+  category   String?   // DOCUMENT, SCREENSHOT, REPORT, etc.
+
+  // Linked to red flag (optional)
+  redFlagId  String?
+  redFlag    RedFlag?  @relation(fields: [redFlagId], references: [id], onDelete: SetNull)
+
+  // Upload tracking
+  uploadedById String
+  uploadedBy   User     @relation(fields: [uploadedById], references: [id])
+  uploadedAt   DateTime @default(now())
+
+  @@index([caseId])
+  @@index([redFlagId])
+}

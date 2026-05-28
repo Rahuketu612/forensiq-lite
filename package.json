@@ -1,0 +1,22 @@
+{
+  "name": "forensiq-lite",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Forensic audit intelligence platform",
+  "scripts": {
+    "dev": "pnpm --parallel -r dev",
+    "build": "pnpm -r build",
+    "clean": "pnpm -r clean",
+    "db:generate": "pnpm -F @forensiq/database exec prisma generate",
+    "db:push": "pnpm -F @forensiq/database exec prisma db push"
+  },
+  "devDependencies": {
+    "prettier": "^3.2.5",
+    "typescript": "^5.4.0"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@9.1.0"
+}
