@@ -92,6 +92,35 @@ export const api = {
     }
     return response.json();
   },
+
+  // Red Flags
+  runRedFlags: (caseId: string) =>
+    request<RunRedFlagsResult>(`/cases/${caseId}/run-red-flags`, { method: 'POST' }),
+
+  getRedFlags: (caseId: string, filters?: RedFlagFilters) => {
+    const searchParams = new URLSearchParams();
+    if (filters) {
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined && value !== '' && value !== null) {
+          searchParams.set(key, String(value));
+        }
+      });
+    }
+    const query = searchParams.toString() ? '?' + searchParams.toString() : '';
+    return request<RedFlagList>(`/cases/${caseId}/red-flags${query}`);
+  },
+
+  getRedFlagStats: (caseId: string) =>
+    request<RedFlagStats>(`/cases/${caseId}/red-flags/stats`),
+
+  markRedFlagReviewed: (caseId: string, flagId: string) =>
+    request<RedFlag>(`/cases/${caseId}/red-flags/${flagId}/review`, { method: 'POST' }),
+
+  addRedFlagFeedback: (caseId: string, flagId: string, feedback: string, type: 'IMPORTANT' | 'FALSE_POSITIVE' | 'NEEDS_EVIDENCE' | 'IGNORE') =>
+    request<RedFlag>(`/cases/${caseId}/red-flags/${flagId}/feedback`, {
+      method: 'POST',
+      body: JSON.stringify({ feedback, type }),
+    }),
 };
 
 export interface User {
@@ -184,6 +213,63 @@ export interface ImportResult {
   successRows: number;
   failedRows: number;
   errors: { row: number; message: string; value: string[] }[];
+}
+
+// Red Flags
+export interface RedFlag {
+  id: string;
+  caseId: string;
+  ruleId: string;
+  ruleName: string;
+  transactionId: string;
+  explanation: string;
+  severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  reviewed: boolean;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  feedbackType?: 'IMPORTANT' | 'FALSE_POSITIVE' | 'NEEDS_EVIDENCE' | 'IGNORE';
+  feedbackNote?: string;
+  createdAt: string;
+  transaction?: Transaction;
+}
+
+export interface RedFlagList {
+  flags: RedFlag[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface RedFlagStats {
+  total: number;
+  high: number;
+  medium: number;
+  low: number;
+  critical: number;
+  reviewed: number;
+  unreviewed: number;
+  bySeverity: { severity: string; count: number }[];
+  byRule: { ruleName: string; count: number }[];
+}
+
+export interface RedFlagFilters {
+  page?: number;
+  limit?: number;
+  severity?: string;
+  reviewed?: boolean;
+  ruleName?: string;
+}
+
+export interface RunRedFlagsResult {
+  message: string;
+  totalFlagsFound: number;
+  newFlagsCreated: number;
+  stats: {
+    total: number;
+    bySeverity: Record<string, number>;
+    byRule: Record<string, number>;
+  };
 }
 
 export default api;

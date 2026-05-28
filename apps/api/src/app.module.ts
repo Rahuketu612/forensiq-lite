@@ -6,6 +6,7 @@ import { HealthModule } from './modules/health/health.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { CasesModule } from './modules/cases/cases.module';
 import { TransactionsModule } from './modules/transactions/transactions.module';
+import { RedFlagsModule } from './modules/red-flags/red-flags.module';
 import { JwtAuthGuard, RolesGuard } from './modules/auth/guards';
 
 @Module({
@@ -28,6 +29,7 @@ import { JwtAuthGuard, RolesGuard } from './modules/auth/guards';
     AuthModule,
     CasesModule,
     TransactionsModule,
+    RedFlagsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },
