@@ -11,6 +11,7 @@ import { InvestigationModule } from './modules/investigation/investigation.modul
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { PdfModule } from './modules/pdf/pdf.module';
 import { MappingModule } from './modules/mapping/mapping.module';
+import { ReportModule } from './modules/report/report.module';
 import { JwtAuthGuard, RolesGuard } from './modules/auth/guards';
 
 @Module({
@@ -38,6 +39,7 @@ import { JwtAuthGuard, RolesGuard } from './modules/auth/guards';
     DashboardModule,
     PdfModule,
     MappingModule,
+    ReportModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },
