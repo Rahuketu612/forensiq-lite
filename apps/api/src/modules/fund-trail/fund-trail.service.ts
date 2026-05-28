@@ -1,7 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { prisma } from '@forensiq/database';
 import { LinkReason } from '@forensiq/database';
-import type { Transaction } from '@forensiq/database';
 
 const LINKING_CONFIG = {
   sameAmountThreshold: 0,
@@ -11,7 +10,26 @@ const LINKING_CONFIG = {
   roundAmountThreshold: 0.01,
 };
 
-export interface TransactionLinkResult {
+interface RawTransaction {
+  id: string;
+  importId: string;
+  caseId: string;
+  date: Date;
+  description: string | null;
+  amount: number;
+  type: string;
+  balance: number | null;
+  counterparty: string | null;
+  mode: string;
+  referenceNumber: string | null;
+  rowNumber: number | null;
+  rawData: unknown | null;
+  riskScore: number;
+  riskFactors: string[];
+  createdAt: Date;
+}
+
+interface TransactionLinkResult {
   sourceTransactionId: string;
   targetTransactionId: string;
   linkReason: LinkReason;
@@ -26,41 +44,34 @@ export interface TransactionLinkResult {
   narrationSimilarity: number | null;
 }
 
+interface FundTrailTransaction {
+  id: string;
+  date: Date;
+  amount: number;
+  type: string;
+  counterparty: string | null;
+  description: string | null;
+}
+
+interface FundTrailLinkData {
+  id: string;
+  sourceTransaction: FundTrailTransaction | undefined;
+  targetTransaction: FundTrailTransaction | undefined;
+  linkReason: string;
+  confidenceScore: number;
+  explanation: string;
+  amountDifference: number | null;
+  timeDifferenceMs: number | null;
+  narrationSimilarity: number | null;
+  createdAt: Date;
+}
+
 export interface FundTrailResult {
   caseId: string;
   transactionCount: number;
   linksCreated: number;
-  links: {
-    id: string;
-    sourceTransaction: {
-      id: string;
-      date: Date;
-      amount: number;
-      type: string;
-      counterparty: string | null;
-      description: string | null;
-    };
-    targetTransaction: {
-      id: string;
-      date: Date;
-      amount: number;
-      type: string;
-      counterparty: string | null;
-      description: string | null;
-    };
-    linkReason: string;
-    confidenceScore: number;
-    explanation: string;
-    amountDifference: number | null;
-    timeDifferenceMs: number | null;
-    narrationSimilarity: number | null;
-    createdAt: Date;
-  }[];
-  auditTrail: {
-    action: string;
-    timestamp: Date;
-    details: string;
-  }[];
+  links: FundTrailLinkData[];
+  auditTrail: Array<{ action: string; timestamp: Date; details: string }>;
 }
 
 @Injectable()
@@ -129,7 +140,7 @@ export class FundTrailService {
         caseId,
         eventType: 'FUND_TRAIL_GENERATED',
         title: 'Fund trail generated',
-        description: `Generated ${createdLinks.length} transaction links from ${transactions.length} transactions`,
+        description: 'Generated ' + createdLinks.length + ' transaction links from ' + transactions.length + ' transactions',
         userId,
         metadata: {
           linksCreated: createdLinks.length,
@@ -138,44 +149,18 @@ export class FundTrailService {
       },
     });
 
-    const linksWithDetails = await Promise.all(
-      createdLinks.map(async (link) => {
-        const sourceTx = await prisma.transaction.findUnique({
-          where: { id: link.sourceTransactionId },
-          select: { id: true, date: true, amount: true, type: true, counterparty: true, description: true },
-        });
-        const targetTx = await prisma.transaction.findUnique({
-          where: { id: link.targetTransactionId },
-          select: { id: true, date: true, amount: true, type: true, counterparty: true, description: true },
-        });
-        return {
-          id: link.id,
-          sourceTransaction: sourceTx ? {
-            id: sourceTx.id,
-            date: sourceTx.date,
-            amount: sourceTx.amount,
-            type: String(sourceTx.type),
-            counterparty: sourceTx.counterparty,
-            description: sourceTx.description,
-          } : null,
-          targetTransaction: targetTx ? {
-            id: targetTx.id,
-            date: targetTx.date,
-            amount: targetTx.amount,
-            type: String(targetTx.type),
-            counterparty: targetTx.counterparty,
-            description: targetTx.description,
-          } : null,
-          linkReason: link.linkReason,
-          confidenceScore: link.confidenceScore,
-          explanation: link.explanation,
-          amountDifference: link.amountDifference,
-          timeDifferenceMs: link.timeDifferenceMs,
-          narrationSimilarity: link.narrationSimilarity,
-          createdAt: link.createdAt,
-        };
-      })
-    );
+    const linksWithDetails = createdLinks.map((link) => ({
+      id: link.id,
+      sourceTransaction: undefined as FundTrailTransaction | undefined,
+      targetTransaction: undefined as FundTrailTransaction | undefined,
+      linkReason: link.linkReason,
+      confidenceScore: link.confidenceScore,
+      explanation: link.explanation,
+      amountDifference: link.amountDifference,
+      timeDifferenceMs: link.timeDifferenceMs,
+      narrationSimilarity: link.narrationSimilarity,
+      createdAt: link.createdAt,
+    }));
 
     return {
       caseId,
@@ -186,7 +171,7 @@ export class FundTrailService {
         {
           action: 'FUND_TRAIL_GENERATED',
           timestamp: new Date(),
-          details: `Generated ${createdLinks.length} links from ${transactions.length} transactions`,
+          details: 'Generated ' + createdLinks.length + ' links from ' + transactions.length + ' transactions',
         },
       ],
     };
@@ -226,44 +211,18 @@ export class FundTrailService {
       },
     });
 
-    const linksWithDetails = await Promise.all(
-      links.map(async (link) => {
-        const sourceTx = await prisma.transaction.findUnique({
-          where: { id: link.sourceTransactionId },
-          select: { id: true, date: true, amount: true, type: true, counterparty: true, description: true },
-        });
-        const targetTx = await prisma.transaction.findUnique({
-          where: { id: link.targetTransactionId },
-          select: { id: true, date: true, amount: true, type: true, counterparty: true, description: true },
-        });
-        return {
-          id: link.id,
-          sourceTransaction: sourceTx ? {
-            id: sourceTx.id,
-            date: sourceTx.date,
-            amount: sourceTx.amount,
-            type: String(sourceTx.type),
-            counterparty: sourceTx.counterparty,
-            description: sourceTx.description,
-          } : null,
-          targetTransaction: targetTx ? {
-            id: targetTx.id,
-            date: targetTx.date,
-            amount: targetTx.amount,
-            type: String(targetTx.type),
-            counterparty: targetTx.counterparty,
-            description: targetTx.description,
-          } : null,
-          linkReason: link.linkReason,
-          confidenceScore: link.confidenceScore,
-          explanation: link.explanation,
-          amountDifference: link.amountDifference,
-          timeDifferenceMs: link.timeDifferenceMs,
-          narrationSimilarity: link.narrationSimilarity,
-          createdAt: link.createdAt,
-        };
-      })
-    );
+    const linksWithDetails = links.map((link) => ({
+      id: link.id,
+      sourceTransaction: undefined as FundTrailTransaction | undefined,
+      targetTransaction: undefined as FundTrailTransaction | undefined,
+      linkReason: link.linkReason,
+      confidenceScore: link.confidenceScore,
+      explanation: link.explanation,
+      amountDifference: link.amountDifference,
+      timeDifferenceMs: link.timeDifferenceMs,
+      narrationSimilarity: link.narrationSimilarity,
+      createdAt: link.createdAt,
+    }));
 
     return {
       caseId,
@@ -323,7 +282,7 @@ export class FundTrailService {
     });
   }
 
-  private findTransactionLinks(transactions: Transaction[]): TransactionLinkResult[] {
+  private findTransactionLinks(transactions: RawTransaction[]): TransactionLinkResult[] {
     const links: TransactionLinkResult[] = [];
     const existingPairs = new Set<string>();
 
@@ -331,8 +290,7 @@ export class FundTrailService {
       for (let j = i + 1; j < transactions.length; j++) {
         const sourceTx = transactions[i];
         const targetTx = transactions[j];
-
-        const pairKey = `${sourceTx.id}-${targetTx.id}`;
+        const pairKey = sourceTx.id + '-' + targetTx.id;
         if (existingPairs.has(pairKey)) continue;
 
         const linkResult = this.evaluateTransactionPair(sourceTx, targetTx);
@@ -348,16 +306,16 @@ export class FundTrailService {
   }
 
   private evaluateTransactionPair(
-    sourceTx: Transaction,
-    targetTx: Transaction
+    sourceTx: RawTransaction,
+    targetTx: RawTransaction
   ): TransactionLinkResult | null {
-    const reasons: { reason: LinkReason; score: number; detail: string }[] = [];
+    const reasons: Array<{ reason: LinkReason; score: number; detail: string }> = [];
 
     if (Math.abs(sourceTx.amount - targetTx.amount) <= LINKING_CONFIG.sameAmountThreshold) {
       reasons.push({
         reason: 'SAME_AMOUNT',
         score: 0.9,
-        detail: `Both transactions have exactly the same amount: ${sourceTx.amount}`,
+        detail: 'Both transactions have exactly the same amount: ' + sourceTx.amount,
       });
     }
 
@@ -367,7 +325,7 @@ export class FundTrailService {
       reasons.push({
         reason: 'NEARBY_TIMESTAMP',
         score: 0.7 + (0.3 * (1 - timeDiffMs / LINKING_CONFIG.timestampWindowMs)),
-        detail: `Transactions occurred within ${minutesDiff} minute(s) of each other (${timeDiffMs}ms apart)`,
+        detail: 'Transactions occurred within ' + minutesDiff + ' minute(s) of each other (' + timeDiffMs + 'ms apart)',
       });
     }
 
@@ -378,7 +336,7 @@ export class FundTrailService {
         reasons.push({
           reason: 'SAME_COUNTERPARTY',
           score: 0.85,
-          detail: `Both transactions involve the same counterparty: "${sourceTx.counterparty}"`,
+          detail: 'Both transactions involve the same counterparty: "' + sourceTx.counterparty + '"',
         });
       }
     }
@@ -390,7 +348,7 @@ export class FundTrailService {
         reasons.push({
           reason: 'NARRATION_SIMILARITY',
           score: 0.6 + (similarity * 0.3),
-          detail: `Transaction descriptions have ${similarityPercent}% similarity: "${sourceTx.description}" vs "${targetTx.description}"`,
+          detail: 'Transaction descriptions have ' + similarityPercent + '% similarity: "' + sourceTx.description + '" vs "' + targetTx.description + '"',
         });
       }
     }
@@ -399,7 +357,7 @@ export class FundTrailService {
       reasons.push({
         reason: 'SAME_MODE',
         score: 0.5,
-        detail: `Both transactions used the same transfer mode: ${sourceTx.mode}`,
+        detail: 'Both transactions used the same transfer mode: ' + sourceTx.mode,
       });
     }
 
@@ -407,7 +365,7 @@ export class FundTrailService {
       reasons.push({
         reason: 'SAME_TYPE',
         score: 0.4,
-        detail: `Both transactions are of the same type: ${sourceTx.type}`,
+        detail: 'Both transactions are of the same type: ' + sourceTx.type,
       });
     }
 
@@ -417,7 +375,7 @@ export class FundTrailService {
       reasons.push({
         reason: 'ROUND_AMOUNT',
         score: 0.5,
-        detail: `Both transactions have round amounts: ${sourceTx.amount} and ${targetTx.amount}`,
+        detail: 'Both transactions have round amounts: ' + sourceTx.amount + ' and ' + targetTx.amount,
       });
     }
 
@@ -474,7 +432,6 @@ export class FundTrailService {
     
     for (const roundVal of roundValues) {
       const remainder = amount % roundVal;
-      const nearestRound = remainder <= roundVal / 2 ? 0 : roundVal;
       const distance = Math.min(remainder, roundVal - remainder);
       const score = 1 - (distance / roundVal);
       if (score > 0.9) return score;
@@ -491,16 +448,16 @@ export class FundTrailService {
   }
 
   private buildExplanation(
-    sourceTx: Transaction,
-    targetTx: Transaction,
-    reasons: { reason: LinkReason; score: number; detail: string }[]
+    sourceTx: RawTransaction,
+    targetTx: RawTransaction,
+    reasons: Array<{ reason: LinkReason; score: number; detail: string }>
   ): string {
     const parts: string[] = [];
 
     const primaryReason = reasons.reduce((best, current) =>
       current.score > best.score ? current : best
     );
-    parts.push(`Primary: ${primaryReason.detail}`);
+    parts.push('Primary: ' + primaryReason.detail);
 
     if (reasons.length > 1) {
       const supportingReasons = reasons
@@ -509,13 +466,13 @@ export class FundTrailService {
         .slice(0, 3);
 
       if (supportingReasons.length > 0) {
-        parts.push(`Supporting evidence: ${supportingReasons.map((r) => r.detail).join('; ')}`);
+        parts.push('Supporting evidence: ' + supportingReasons.map((r) => r.detail).join('; '));
       }
     }
 
     parts.push(
-      `Transaction 1: ${sourceTx.type} of ${sourceTx.amount} on ${sourceTx.date.toISOString().split('T')[0]}`,
-      `Transaction 2: ${targetTx.type} of ${targetTx.amount} on ${targetTx.date.toISOString().split('T')[0]}`
+      'Transaction 1: ' + sourceTx.type + ' of ' + sourceTx.amount + ' on ' + sourceTx.date.toISOString().split('T')[0],
+      'Transaction 2: ' + targetTx.type + ' of ' + targetTx.amount + ' on ' + targetTx.date.toISOString().split('T')[0]
     );
 
     return parts.join('. ');

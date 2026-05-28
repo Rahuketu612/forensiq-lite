@@ -428,7 +428,7 @@ export class InvestigationService {
           },
           orderBy: { createdAt: 'desc' },
         },
-        timeline: {
+        timelines: {
           include: {
             user: { select: { id: true, name: true } },
           },

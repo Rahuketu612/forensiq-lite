@@ -1,61 +1,61 @@
 import { PrismaClient, TransactionType, TransactionMode, ImportStatus, RedFlagSeverity, CaseStatus, InvestigationStatus, TimelineEventType } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
 
-// Initialize Prisma
 const prisma = new PrismaClient();
 
-// Demo seed data for forensic investigation testing
 async function main() {
   console.log('🌱 Seeding forensic demo data...');
 
-  // Check if already seeded
   const caseCount = await prisma.case.count();
   if (caseCount > 0) {
     console.log('⚠️  Database already contains data. Skipping seed.');
     return;
   }
 
-  // Create demo auditor user
+  const auditorPassword = await bcrypt.hash('demo123', 12);
+  const adminPassword = await bcrypt.hash('admin123', 12);
+
   const auditor = await prisma.user.create({
     data: {
       email: 'auditor@forensiq.local',
       name: 'Senior Auditor Mehta',
-      password: 'demo123',
+      password: auditorPassword,
       role: 'AUDITOR',
     },
   });
   console.log(`✅ Created auditor: ${auditor.email}`);
 
-  // Create demo admin user
   const admin = await prisma.user.create({
     data: {
       email: 'admin@forensiq.local',
       name: 'System Administrator',
-      password: 'admin123',
+      password: adminPassword,
       role: 'ADMIN',
     },
   });
   console.log(`✅ Created admin: ${admin.email}`);
 
-  // Create sample forensic case
   const demoCase = await prisma.case.create({
     data: {
+      caseNumber: 'CASE-2024-001',
       title: 'Kumar Electronics - Vendor Payment Anomaly Investigation',
       description: 'Investigation into suspected fraudulent vendor payments at Kumar Electronics Pvt Ltd. Bank statements for Q1-Q2 2024 show unusual payment patterns to new vendors.',
       status: CaseStatus.ACTIVE,
       riskLevel: 'HIGH',
+      clientName: 'Kumar Electronics Pvt Ltd',
+      clientEmail: 'legal@kumarelectronics.com',
+      clientPhone: '+91-9876543210',
       createdById: auditor.id,
     },
   });
   console.log(`✅ Created case: ${demoCase.title}`);
 
-  // Create transaction import record
   const importRecord = await prisma.transactionImport.create({
     data: {
       caseId: demoCase.id,
-      originalName: 'Kumar_Electronics_Account_Statement_2024.xlsx',
       fileName: 'kumar_electronics_statement_2024.xlsx',
+      originalName: 'Kumar_Electronics_Account_Statement_2024.xlsx',
       mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      fileSize: 245760,
       status: ImportStatus.COMPLETED,
       totalRows: 20,
       successRows: 20,
@@ -65,319 +65,101 @@ async function main() {
   });
   console.log(`✅ Created transaction import`);
 
-  // Base date for transactions
-  const baseDate = new Date('2024-01-15');
-
-  // Create 20 sample transactions with specific forensic scenarios
-  const transactions = [
-    // 1. Normal transaction (credit)
-    {
-      caseId: demoCase.id,
-      importId: importRecord.id,
-      date: new Date('2024-01-15'),
-      description: 'RTGS from ABC Corp - Invoice Payment',
-      amount: 150000,
-      type: TransactionType.CREDIT,
-      balance: 150000,
-      counterparty: 'ABC Corporation',
-      mode: TransactionMode.RTGS,
-      referenceNumber: 'RTGS2024001001',
-    },
-    // 2. Normal transaction (debit)
-    {
-      caseId: demoCase.id,
-      importId: importRecord.id,
-      date: new Date('2024-01-18'),
-      description: 'Vendor Payment - Tech Solutions Ltd',
-      amount: 45000,
-      type: TransactionType.DEBIT,
-      balance: 105000,
-      counterparty: 'Tech Solutions Limited',
-      mode: TransactionMode.NEFT,
-      referenceNumber: 'NEFT2024001020',
-    },
-    // 3. HIGH VALUE transaction (>1,00,000)
-    {
-      caseId: demoCase.id,
-      importId: importRecord.id,
-      date: new Date('2024-01-22'),
-      description: 'Wire Transfer - New Vendor XYZ',
-      amount: 2500000,
-      type: TransactionType.DEBIT,
-      balance: 2550000,
-      counterparty: 'XYZ Supplies Private Limited',
-      mode: TransactionMode.ONLINE,
-      referenceNumber: 'WIRE2024001225',
-    },
-    // 4. Round amount transaction (suspicious)
-    {
-      caseId: demoCase.id,
-      importId: importRecord.id,
-      date: new Date('2024-01-25'),
-      description: 'Payment Clearance',
-      amount: 100000,
-      type: TransactionType.DEBIT,
-      balance: 2450000,
-      counterparty: 'M/s Rahul Enterprises',
-      mode: TransactionMode.CHEQUE,
-      referenceNumber: 'CHQ2024012501',
-    },
-    // 5. Weekend transaction
-    {
-      caseId: demoCase.id,
-      importId: importRecord.id,
-      date: new Date('2024-01-27'), // Saturday
-      description: 'Emergency Transfer - Account Payable',
-      amount: 75000,
-      type: TransactionType.DEBIT,
-      balance: 2375000,
-      counterparty: 'Various Creditors',
-      mode: TransactionMode.IMPS,
-      referenceNumber: 'IMPS2024012701',
-    },
-    // 6. Suspicious narration transaction
-    {
-      caseId: demoCase.id,
-      importId: importRecord.id,
-      date: new Date('2024-02-01'),
-      description: 'Settlement as per our discussion - DO NOT RECONCILE',
-      amount: 200000,
-      type: TransactionType.DEBIT,
-      balance: 2175000,
-      counterparty: 'Confidential Account',
-      mode: TransactionMode.ONLINE,
-      referenceNumber: 'ONL2024020101',
-    },
-    // 7-8. Duplicate transactions (same amount, similar description)
-    {
-      caseId: demoCase.id,
-      importId: importRecord.id,
-      date: new Date('2024-02-05'),
-      description: 'Annual Maintenance Contract Payment',
-      amount: 180000,
-      type: TransactionType.DEBIT,
-      balance: 1995000,
-      counterparty: 'ServicePro Consultants',
-      mode: TransactionMode.NEFT,
-      referenceNumber: 'NEFT2024020501',
-    },
-    {
-      caseId: demoCase.id,
-      importId: importRecord.id,
-      date: new Date('2024-02-06'),
-      description: 'AMC Payment - ServicePro Consultants',
-      amount: 180000,
-      type: TransactionType.DEBIT,
-      balance: 1815000,
-      counterparty: 'ServicePro Consultants',
-      mode: TransactionMode.NEFT,
-      referenceNumber: 'NEFT2024020601',
-    },
-    // 9. Normal transaction
-    {
-      caseId: demoCase.id,
-      importId: importRecord.id,
-      date: new Date('2024-02-10'),
-      description: 'Rent Deposit Refund',
-      amount: 25000,
-      type: TransactionType.CREDIT,
-      balance: 1840000,
-      counterparty: '_property_owner',
-      mode: TransactionMode.BANK,
-    },
-    // 10. High value credit
-    {
-      caseId: demoCase.id,
-      importId: importRecord.id,
-      date: new Date('2024-02-15'),
-      description: 'Customer Receipt - Mega Mart',
-      amount: 890000,
-      type: TransactionType.CREDIT,
-      balance: 2730000,
-      counterparty: 'Mega Mart Retail Chain',
-      mode: TransactionMode.RTGS,
-      referenceNumber: 'RTGS2024021501',
-    },
-    // 11. Suspicious pattern - multiple small payments
- {
-      caseId: demoCase.id,
-      importId: importRecord.id,
-      date: new Date('2024-02-20'),
-      description: 'Petty Cash Replenishment',
-      amount: 49999,
-      type: TransactionType.DEBIT,
-      balance: 2680001,
-      counterparty: 'Cash Management A/c',
-      mode: TransactionMode.CASH,
-      referenceNumber: 'CASH2024022001',
-    },
-    {
-      caseId: demoCase.id,
-      importId: importRecord.id,
-      date: new Date('2024-02-21'),
-      description: 'Petty Cash Top-up',
-      amount: 49999,
-      type: TransactionType.DEBIT,
-      balance: 2630002,
-      counterparty: 'Cash Management A/c',
-      mode: TransactionMode.CASH,
-      referenceNumber: 'CASH2024022101',
-    },
-    {
-      caseId: demoCase.id,
-      importId: importRecord.id,
-      date: new Date('2024-02-22'),
-      description: 'Cash Withdrawal Replenish',
-      amount: 49999,
-      type: TransactionType.DEBIT,
-      balance: 2580003,
-      counterparty: 'Cash Management A/c',
-      mode: TransactionMode.CASH,
-      referenceNumber: 'CASH2024022201',
-    },
-    // 14. Normal transaction
-    {
-      caseId: demoCase.id,
-      importId: importRecord.id,
-      date: new Date('2024-03-01'),
-      description: 'Electricity Bill Payment - State Discom',
-      amount: 125000,
-      type: TransactionType.DEBIT,
-      balance: 2455003,
-      counterparty: 'MSEDCL',
-      mode: TransactionMode.ONLINE,
-      referenceNumber: 'UTI2024030101',
-    },
-    // 15. High value debit to new vendor
-    {
-      caseId: demoCase.id,
-      importId: importRecord.id,
-      date: new Date('2024-03-05'),
-      description: 'New Vendor Payment - First Transaction',
-      amount: 1500000,
-      type: TransactionType.DEBIT,
-      balance: 955003,
-      counterparty: 'FastTrack Logistics Pvt Ltd',
-      mode: TransactionMode.RTGS,
-      referenceNumber: 'RTGS2024030501',
-    },
-    // 16. Reversal/refund
-    {
-      caseId: demoCase.id,
-      importId: importRecord.id,
-      date: new Date('2024-03-08'),
-      description: 'REVERSAL: Wrong Beneficiary Account',
-      amount: 45000,
-      type: TransactionType.REFUND,
-      balance: 1000003,
-      counterparty: 'Tech Solutions Limited',
-      mode: TransactionMode.NEFT,
-      referenceNumber: 'NEFT2024030801R',
-    },
-    // 17. Fee transaction
-    {
-      caseId: demoCase.id,
-      importId: importRecord.id,
-      date: new Date('2024-03-10'),
-      description: 'Account Maintenance Fee',
-      amount: 5000,
-      type: TransactionType.FEE,
-      balance: 995003,
-      mode: TransactionMode.BANK,
-    },
-    // 18. Normal transaction
-    {
-      caseId: demoCase.id,
-      importId: importRecord.id,
-      date: new Date('2024-03-15'),
-      description: 'Customer Advance - Raj Industries',
-      amount: 350000,
-      type: TransactionType.CREDIT,
-      balance: 1345003,
-      counterparty: 'Raj Industries Limited',
-      mode: TransactionMode.RTGS,
-      referenceNumber: 'RTGS2024031501',
-    },
-    // 19. Suspicious round amount
-    {
-      caseId: demoCase.id,
-      importId: importRecord.id,
-      date: new Date('2024-03-20'),
-      description: 'Settlement Payment',
-      amount: 500000,
-      type: TransactionType.DEBIT,
-      balance: 845003,
-      counterparty: 'Account Settlement Trust',
-      mode: TransactionMode.ONLINE,
-      referenceNumber: 'ONL2024032001',
-    },
-    // 20. Final transaction
-    {
-      caseId: demoCase.id,
-      importId: importRecord.id,
-      date: new Date('2024-03-25'),
-      description: 'Quarterly Interest Credit',
-      amount: 15200,
-      type: TransactionType.CREDIT,
-      balance: 860203,
-      mode: TransactionMode.BANK,
-    },
+  const transactionData = [
+    { date: '2024-01-15', desc: 'RTGS from ABC Corp - Invoice Payment', amount: 150000, type: TransactionType.CREDIT, balance: 150000, counterparty: 'ABC Corporation', mode: TransactionMode.RTGS, ref: 'RTGS2024001001' },
+    { date: '2024-01-18', desc: 'Vendor Payment - Tech Solutions Ltd', amount: 45000, type: TransactionType.DEBIT, balance: 105000, counterparty: 'Tech Solutions Limited', mode: TransactionMode.NEFT, ref: 'NEFT2024001020' },
+    { date: '2024-01-22', desc: 'Wire Transfer - New Vendor XYZ', amount: 2500000, type: TransactionType.DEBIT, balance: 2550000, counterparty: 'XYZ Supplies Private Limited', mode: TransactionMode.ONLINE, ref: 'WIRE2024001225' },
+    { date: '2024-01-25', desc: 'Payment Clearance', amount: 100000, type: TransactionType.DEBIT, balance: 2450000, counterparty: 'M/s Rahul Enterprises', mode: TransactionMode.CHEQUE, ref: 'CHQ2024012501' },
+    { date: '2024-01-27', desc: 'Emergency Transfer - Account Payable', amount: 75000, type: TransactionType.DEBIT, balance: 2375000, counterparty: 'Various Creditors', mode: TransactionMode.IMPS, ref: 'IMPS2024012701' },
+    { date: '2024-02-01', desc: 'Settlement as per our discussion - DO NOT RECONCILE', amount: 200000, type: TransactionType.DEBIT, balance: 2175000, counterparty: 'Confidential Account', mode: TransactionMode.ONLINE, ref: 'ONL2024020101' },
+    { date: '2024-02-05', desc: 'Annual Maintenance Contract Payment', amount: 180000, type: TransactionType.DEBIT, balance: 1995000, counterparty: 'ServicePro Consultants', mode: TransactionMode.NEFT, ref: 'NEFT2024020501' },
+    { date: '2024-02-06', desc: 'AMC Payment - ServicePro Consultants', amount: 180000, type: TransactionType.DEBIT, balance: 1815000, counterparty: 'ServicePro Consultants', mode: TransactionMode.NEFT, ref: 'NEFT2024020601' },
+    { date: '2024-02-10', desc: 'Rent Deposit Refund', amount: 25000, type: TransactionType.CREDIT, balance: 1840000, counterparty: 'Property Owner', mode: TransactionMode.BANK, ref: 'BANK2024021001' },
+    { date: '2024-02-15', desc: 'Customer Receipt - Mega Mart', amount: 890000, type: TransactionType.CREDIT, balance: 2730000, counterparty: 'Mega Mart Retail Chain', mode: TransactionMode.RTGS, ref: 'RTGS2024021501' },
+    { date: '2024-02-20', desc: 'Petty Cash Replenishment', amount: 49999, type: TransactionType.DEBIT, balance: 2680001, counterparty: 'Cash Management A/c', mode: TransactionMode.CASH, ref: 'CASH2024022001' },
+    { date: '2024-02-21', desc: 'Petty Cash Top-up', amount: 49999, type: TransactionType.DEBIT, balance: 2630002, counterparty: 'Cash Management A/c', mode: TransactionMode.CASH, ref: 'CASH2024022101' },
+    { date: '2024-02-22', desc: 'Cash Withdrawal Replenish', amount: 49999, type: TransactionType.DEBIT, balance: 2580003, counterparty: 'Cash Management A/c', mode: TransactionMode.CASH, ref: 'CASH2024022201' },
+    { date: '2024-03-01', desc: 'Electricity Bill Payment - State Discom', amount: 125000, type: TransactionType.DEBIT, balance: 2455003, counterparty: 'MSEDCL', mode: TransactionMode.ONLINE, ref: 'UTI2024030101' },
+    { date: '2024-03-05', desc: 'New Vendor Payment - FastTrack Logistics', amount: 1500000, type: TransactionType.DEBIT, balance: 3955003, counterparty: 'FastTrack Logistics Pvt Ltd', mode: TransactionMode.RTGS, ref: 'RTGS2024030501' },
+    { date: '2024-03-10', desc: 'Insurance Premium Payment', amount: 75000, type: TransactionType.DEBIT, balance: 3880003, counterparty: 'United India Insurance', mode: TransactionMode.ONLINE, ref: 'ONL2024031001' },
+    { date: '2024-03-12', desc: 'Salary Disbursement - March 2024', amount: 2500000, type: TransactionType.DEBIT, balance: 1380003, counterparty: 'Employee Salary Account', mode: TransactionMode.ONLINE, ref: 'SAL2024031201' },
+    { date: '2024-03-15', desc: 'Advance from Raj Industries', amount: 750000, type: TransactionType.CREDIT, balance: 2130003, counterparty: 'Raj Industries Limited', mode: TransactionMode.RTGS, ref: 'RTGS2024031501' },
+    { date: '2024-03-20', desc: 'Settlement Payment', amount: 500000, type: TransactionType.DEBIT, balance: 1630003, counterparty: 'Account Settlement Trust', mode: TransactionMode.ONLINE, ref: 'ONL2024032001' },
+    { date: '2024-03-25', desc: 'Quarterly Interest Credit', amount: 15200, type: TransactionType.CREDIT, balance: 1645203, counterparty: 'Bank Interest', mode: TransactionMode.BANK, ref: 'BANK2024032501' },
   ];
 
-  for (const txn of transactions) {
-    await prisma.transaction.create({ data: txn });
+  const transactions = [];
+  for (const txn of transactionData) {
+    const created = await prisma.transaction.create({
+      data: {
+        caseId: demoCase.id,
+        importId: importRecord.id,
+        date: new Date(txn.date),
+        description: txn.desc,
+        amount: txn.amount,
+        type: txn.type,
+        balance: txn.balance ?? null,
+        counterparty: txn.counterparty,
+        mode: txn.mode,
+        referenceNumber: txn.ref,
+      },
+    });
+    transactions.push(created);
   }
-  console.log(`✅ Created 20 sample transactions`);
+  console.log(`✅ Created ${transactions.length} sample transactions`);
 
-  // Create evidence file metadata records
-  await prisma.evidence.createMany({
+  await prisma.evidenceFile.createMany({
     data: [
       {
         caseId: demoCase.id,
-        fileName: 'Kumar_Electronics_Bank_Statement_Jan_Mar_2024.pdf',
+        fileName: 'kumar_bank_statement_q1_2024.pdf',
+        originalName: 'Kumar_Electronics_Bank_Statement_Jan_Mar_2024.pdf',
         mimeType: 'application/pdf',
-        fileSize: 524288,
-        sha256Hash: 'a3f5e8b2c1d4e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1',
-        uploadedById: auditor.id,
+        size: 524288,
+        path: '/uploads/evidence/kumar_bank_statement_q1_2024.pdf',
+        hash: 'a3f5e8b2c1d4e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1',
         description: 'Primary bank statement for Kumar Electronics account - January to March 2024',
+        category: 'Financial Document',
+        uploadedById: auditor.id,
       },
       {
         caseId: demoCase.id,
-        fileName: 'Vendor_Registration_Certificates.pdf',
+        fileName: 'vendor_registration_certs.pdf',
+        originalName: 'Vendor_Registration_Certificates.pdf',
         mimeType: 'application/pdf',
-        fileSize: 1024000,
-        sha256Hash: 'b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6',
-        uploadedById: auditor.id,
+        size: 1024000,
+        path: '/uploads/evidence/vendor_registration_certs.pdf',
+        hash: 'b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6',
         description: 'Copies of vendor registration certificates for XYZ Supplies and FastTrack Logistics',
+        category: 'Registration Document',
+        uploadedById: auditor.id,
       },
     ],
   });
   console.log(`✅ Created 2 evidence file records`);
 
-  // Create investigation notes
   await prisma.investigationNote.createMany({
     data: [
       {
         caseId: demoCase.id,
+        title: 'Initial Findings - Major Concerns',
         content: 'Initial review of bank statements reveals three major concerns: (1) High-value payment of ₹25,00,000 to XYZ Supplies on Jan 22 without standard vendor verification, (2) Duplicate payments to ServicePro Consultants totaling ₹3,60,000, (3) Pattern of round-number transactions that may indicate fictitious payments.',
         authorId: auditor.id,
-        createdAt: new Date('2024-03-26'),
       },
       {
         caseId: demoCase.id,
+        title: 'XYZ Supplies Investigation Update',
         content: 'Follow-up investigation shows XYZ Supplies is a newly registered entity (incorporated Dec 2023) with no prior business relationship. Company secretary is same person who authorized payment. Flagging for enhanced due diligence.',
         authorId: auditor.id,
-        createdAt: new Date('2024-03-27'),
       },
     ],
   });
   console.log(`✅ Created 2 investigation notes`);
 
-  // Create timeline events
-  const timeline1 = await prisma.investigationTimeline.create({
+  await prisma.investigationTimeline.create({
     data: {
       caseId: demoCase.id,
-      eventType: TimelineEventType.CASE_CREATED,
+      eventType: TimelineEventType.NOTE_ADDED,
       title: 'Case Created',
       description: 'Investigation case created by Senior Auditor Mehta',
       userId: auditor.id,
@@ -392,7 +174,7 @@ async function main() {
         title: 'Transactions Imported',
         description: 'Bank statement imported - 20 transactions loaded',
         userId: auditor.id,
-        metadata: { importId: importRecord.id },
+        metadata: { importId: importRecord.id, transactionCount: 20 },
       },
       {
         caseId: demoCase.id,
@@ -412,95 +194,69 @@ async function main() {
   });
   console.log(`✅ Created timeline events`);
 
-  // Wait for transactions to be created, then run red flag detection
-  await new Promise(resolve => setTimeout(resolve, 500));
-
-  // Get the transactions we just created
-  const allTransactions = await prisma.transaction.findMany({
-    where: { caseId: demoCase.id },
-  });
-
-  // Manual red flag creation since red flag rules may not exist yet
   const flags = [
-    {
-      description: 'High-value transaction exceeding₹10,00,000 detected',
-      flaggedAmount: 2500000,
-      flaggedAccount: 'XYZ Supplies Private Limited',
-      flaggedNarration: 'Wire Transfer - New Vendor XYZ',
-      severity: RedFlagSeverity.HIGH,
-      ruleName: 'HIGH_VALUE_TRANSACTION',
-      transactionId: allTransactions[2].id,
-    },
-    {
-      description: 'Duplicate transaction detected: Similar amount (₹1,80,000) to same vendor within 24 hours',
-      flaggedAmount: 180000,
-      flaggedAccount: 'ServicePro Consultants',
-      flaggedNarration: 'AMC Payment - ServicePro Consultants',
-      severity: RedFlagSeverity.CRITICAL,
-      ruleName: 'DUPLICATE_TRANSACTION',
-      transactionId: allTransactions[7].id,
-    },
-    {
-      description: 'Round amount transaction (₹1,00,000) - often associated with fictitious transactions',
-      flaggedAmount: 100000,
-      flaggedAccount: 'M/s Rahul Enterprises',
-      flaggedNarration: 'Payment Clearance',
-      severity: RedFlagSeverity.HIGH,
-      ruleName: 'ROUND_AMOUNT',
-      transactionId: allTransactions[3].id,
-    },
-    {
-      description: 'Weekend transaction detected - transactions on non-business days may indicate urgency unusual for legitimate business',
-      flaggedAmount: 75000,
-      flaggedAccount: 'Various Creditors',
-      flaggedNarration: 'Emergency Transfer - Account Payable',
-      severity: RedFlagSeverity.MEDIUM,
-      ruleName: 'WEEKEND_TRANSACTION',
-      transactionId: allTransactions[4].id,
-    },
-    {
-      description: 'Suspicious narration: "DO NOT RECONCILE" - may indicate intent to hide fraudulent transaction',
-      flaggedAmount: 200000,
-      flaggedAccount: 'Confidential Account',
-      flaggedNarration: 'Settlement as per our discussion - DO NOT RECONCILE',
-      severity: RedFlagSeverity.CRITICAL,
-      ruleName: 'SUSPICIOUS_NARRATION',
-      transactionId: allTransactions[5].id,
-    },
-    {
-      description: 'Pattern: Multiple round amounts just below₹50,000 may indicate structuring to avoid reporting threshold',
-      flaggedAmount: 49999,
-      flaggedAccount: 'Cash Management A/c',
-      flaggedNarration: 'Petty Cash Replenishment',
-      severity: RedFlagSeverity.HIGH,
-      ruleName: 'STRUCTURING_PATTERN',
-      transactionId: allTransactions[10].id,
-    },
-    {
-      description: 'First transaction to new vendor exceeding₹10,00,000 without vendor verification',
-      flaggedAmount: 1500000,
-      flaggedAccount: 'FastTrack Logistics Pvt Ltd',
-      flaggedNarration: 'New Vendor Payment - First Transaction',
-      severity: RedFlagSeverity.HIGH,
-      ruleName: 'NEW_VENDOR_HIGH_VALUE',
-      transactionId: allTransactions[14].id,
-    },
+    { transactionId: transactions[2].id, ruleName: 'HIGH_VALUE_TRANSACTION', title: 'High-value transaction exceeding ₹10,00,000', explanation: 'High-value transaction of ₹25,00,000 to XYZ Supplies Private Limited detected. New vendor with no prior business relationship.', severity: RedFlagSeverity.HIGH },
+    { transactionId: transactions[7].id, ruleName: 'DUPLICATE_TRANSACTION', title: 'Duplicate transaction detected', explanation: 'Duplicate transaction: Similar amount (₹1,80,000) to same vendor (ServicePro Consultants) within 24 hours.', severity: RedFlagSeverity.CRITICAL },
+    { transactionId: transactions[3].id, ruleName: 'ROUND_AMOUNT', title: 'Round amount transaction - potential fictitious payment', explanation: 'Round amount transaction of ₹1,00,000 detected. Round amounts are often associated with fictitious transactions.', severity: RedFlagSeverity.HIGH },
+    { transactionId: transactions[4].id, ruleName: 'WEEKEND_TRANSACTION', title: 'Weekend transaction detected', explanation: 'Transaction on Saturday (Jan 27, 2024). Transactions on non-business days may indicate urgency.', severity: RedFlagSeverity.MEDIUM },
+    { transactionId: transactions[5].id, ruleName: 'SUSPICIOUS_NARRATION', title: 'Suspicious narration: DO NOT RECONCILE', explanation: 'Transaction narration contains "DO NOT RECONCILE" instruction. This may indicate intent to hide fraudulent transaction.', severity: RedFlagSeverity.CRITICAL },
+    { transactionId: transactions[10].id, ruleName: 'STRUCTURING_PATTERN', title: 'Potential structuring - amounts below reporting threshold', explanation: 'Pattern: Multiple round amounts just below ₹50,000 detected (₹49,999). This pattern may indicate structuring.', severity: RedFlagSeverity.HIGH },
+    { transactionId: transactions[14].id, ruleName: 'NEW_VENDOR_HIGH_VALUE', title: 'First transaction to new vendor exceeding ₹10,00,000', explanation: 'First transaction to FastTrack Logistics Pvt Ltd exceeds ₹10,00,000 without vendor verification.', severity: RedFlagSeverity.HIGH },
   ];
 
   for (const flag of flags) {
-    const createdFlag = await prisma.redFlag.create({
+    await prisma.redFlag.create({
       data: {
         caseId: demoCase.id,
-        ...flag,
+        transactionId: flag.transactionId,
+        ruleName: flag.ruleName,
+        title: flag.title,
+        explanation: flag.explanation,
+        severity: flag.severity,
+        status: InvestigationStatus.OPEN,
       },
     });
     console.log(`✅ Created red flag: ${flag.ruleName}`);
   }
 
+  const fundTrailLinks = [
+    { sourceTxIdx: 6, targetTxIdx: 7, reason: 'SAME_AMOUNT', explanation: 'Both transactions have exactly the same amount: 180000. Same counterparty: ServicePro Consultants. Same mode: NEFT.', confidence: 0.95 },
+    { sourceTxIdx: 10, targetTxIdx: 11, reason: 'SAME_AMOUNT', explanation: 'Both transactions have exactly the same amount: 49999. Same counterparty: Cash Management A/c. Same mode: CASH.', confidence: 0.92 },
+    { sourceTxIdx: 11, targetTxIdx: 12, reason: 'SAME_AMOUNT', explanation: 'Both transactions have exactly the same amount: 49999. Same counterparty: Cash Management A/c. Same mode: CASH.', confidence: 0.88 },
+  ];
+
+  for (const link of fundTrailLinks) {
+    await prisma.transactionLink.create({
+      data: {
+        caseId: demoCase.id,
+        sourceTransactionId: transactions[link.sourceTxIdx].id,
+        targetTransactionId: transactions[link.targetTxIdx].id,
+        linkReason: link.reason,
+        confidenceScore: link.confidence,
+        explanation: link.explanation,
+        amountMatch: true,
+        counterpartyMatch: true,
+        amountDifference: 0,
+        createdById: auditor.id,
+      },
+    });
+    console.log(`✅ Created fund trail link (${link.reason})`);
+  }
+
+  await prisma.auditLog.createMany({
+    data: [
+      { userId: auditor.id, action: 'CREATED', entityType: 'Case', entityId: demoCase.id, caseId: demoCase.id, metadata: { caseNumber: demoCase.caseNumber } },
+      { userId: auditor.id, action: 'TRAIL_GENERATED', entityType: 'TransactionLink', entityId: demoCase.id, caseId: demoCase.id, metadata: { linksCreated: fundTrailLinks.length } },
+    ],
+  });
+  console.log(`✅ Created audit logs`);
+
   console.log('\n🎉 Forensic demo data seeded successfully!');
   console.log(`   Case ID: ${demoCase.id}`);
-  console.log(`   Transactions: 20`);
+  console.log(`   Case Number: ${demoCase.caseNumber}`);
+  console.log(`   Transactions: ${transactions.length}`);
   console.log(`   Red Flags: ${flags.length}`);
+  console.log(`   Fund Trail Links: ${fundTrailLinks.length}`);
   console.log(`\n🔐 Demo Credentials:`);
   console.log(`   Auditor: auditor@forensiq.local / demo123`);
   console.log(`   Admin: admin@forensiq.local / admin123`);
