@@ -151,6 +151,7 @@ export class InvestigationService {
       mimeType: string;
       size: number;
       path: string;
+      hash: string;
       description?: string;
       category?: string;
       transactionId?: string;
@@ -166,6 +167,7 @@ export class InvestigationService {
         mimeType: data.mimeType,
         size: data.size,
         path: data.path,
+        hash: data.hash,
         description: data.description,
         category: data.category,
         transactionId: data.transactionId,
@@ -181,13 +183,33 @@ export class InvestigationService {
 
     // Create timeline entry
     await this.addTimelineEntry(caseId, userId, {
-      eventType: TimelineEventType.EVIDENCE_ATTACHED,
-      title: 'Evidence attached',
-      description: `File: ${data.originalName}`,
+      eventType: TimelineEventType.EVIDENCE_UPLOADED,
+      title: 'Evidence uploaded',
+      description: `File: ${data.originalName} (SHA256: ${data.hash.slice(0, 16)}...)`,
       redFlagId: data.redFlagId,
       transactionId: data.transactionId,
-      metadata: { evidenceId: evidence.id },
+      metadata: { evidenceId: evidence.id, hash: data.hash },
     });
+
+    return evidence;
+  }
+
+  /**
+   * Get evidence file by ID
+   */
+  async getEvidenceById(caseId: string, evidenceId: string) {
+    const evidence = await prisma.evidenceFile.findFirst({
+      where: { id: evidenceId, caseId },
+      include: {
+        uploadedBy: { select: { id: true, name: true, email: true } },
+        transaction: { select: { id: true, date: true, amount: true } },
+        redFlag: { select: { id: true, ruleName: true, severity: true } },
+      },
+    });
+
+    if (!evidence) {
+      throw new NotFoundException('Evidence not found');
+    }
 
     return evidence;
   }
@@ -238,7 +260,9 @@ export class InvestigationService {
    * Remove evidence link
    */
   async removeEvidence(caseId: string, userId: string, evidenceId: string) {
-    const evidence = await prisma.evidenceFile.findUnique({ where: { id: evidenceId } });
+    const evidence = await prisma.evidenceFile.findFirst({ 
+      where: { id: evidenceId, caseId } 
+    });
     if (!evidence) {
       throw new NotFoundException('Evidence not found');
     }

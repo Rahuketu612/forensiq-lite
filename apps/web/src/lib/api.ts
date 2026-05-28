@@ -138,8 +138,25 @@ export const api = {
   },
 
   // Investigation - Evidence
-  linkEvidence: (caseId: string, data: any) =>
-    request<EvidenceFile>(`/cases/${caseId}/evidence`, { method: 'POST', body: JSON.stringify(data) }),
+  uploadEvidence: async (caseId: string, file: File, metadata: {
+    description?: string;
+    category?: string;
+    transactionId?: string;
+    redFlagId?: string;
+  }): Promise<EvidenceFile> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (metadata.description) formData.append('description', metadata.description);
+    if (metadata.category) formData.append('category', metadata.category);
+    if (metadata.transactionId) formData.append('transactionId', metadata.transactionId);
+    if (metadata.redFlagId) formData.append('redFlagId', metadata.redFlagId);
+    
+    return fetch(`${API_BASE_URL}/cases/${caseId}/evidence/upload`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${getToken()}` },
+      body: formData,
+    }).then(handleResponse);
+  },
 
   getEvidence: (caseId: string, filters?: { transactionId?: string; redFlagId?: string }) => {
     const params = new URLSearchParams();
@@ -151,6 +168,15 @@ export const api = {
     const query = params.toString() ? '?' + params.toString() : '';
     return request<EvidenceFileList>(`/cases/${caseId}/evidence${query}`);
   },
+
+  getEvidenceById: (caseId: string, evidenceId: string) =>
+    request<EvidenceFile>(`/cases/${caseId}/evidence/${evidenceId}`),
+
+  getEvidenceDownloadUrl: (caseId: string, evidenceId: string) =>
+    `${API_BASE_URL}/cases/${caseId}/evidence/${evidenceId}/download`,
+
+  deleteEvidence: (caseId: string, evidenceId: string) =>
+    request(`${casesUrl(caseId)}/evidence/${evidenceId}`, { method: 'DELETE' }),
 
   // Investigation - Timeline
   getTimeline: (caseId: string, filters?: { redFlagId?: string; transactionId?: string }) => {
@@ -362,6 +388,7 @@ export interface EvidenceFile {
   mimeType: string;
   size: number;
   path: string;
+  hash: string;
   description?: string;
   category?: string;
   transactionId?: string;

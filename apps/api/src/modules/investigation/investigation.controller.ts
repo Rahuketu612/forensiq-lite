@@ -1,6 +1,9 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, Query, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
+import { Controller, Get, Post, Put, Delete, Param, Body, Query, UseGuards, UseInterceptors, UploadedFile, Res } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiParam, ApiConsumes } from '@nestjs/swagger';
+import { Response } from 'express';
 import { InvestigationService } from './investigation.service';
+import { FileStorageService } from '../../common/services/file-storage.service';
 import { JwtAuthGuard } from '../auth/guards';
 import { CurrentUser, CurrentUserData } from '../../common/decorators/current-user.decorator';
 import { InvestigationStatus } from '@forensiq/database';
@@ -10,7 +13,10 @@ import { InvestigationStatus } from '@forensiq/database';
 @Controller('v1/cases/:caseId')
 @UseGuards(JwtAuthGuard)
 export class InvestigationController {
-  constructor(private readonly investigationService: InvestigationService) {}
+  constructor(
+    private readonly investigationService: InvestigationService,
+    private readonly fileStorageService: FileStorageService,
+  ) {}
 
   // ============================================
   // Notes
@@ -68,28 +74,44 @@ export class InvestigationController {
   }
 
   // ============================================
-  // Evidence
+  // Evidence - File Upload
   // ============================================
 
-  @Post('evidence')
-  @ApiOperation({ summary: 'Link evidence file' })
+  @Post('evidence/upload')
+  @ApiOperation({ summary: 'Upload evidence file' })
   @ApiParam({ name: 'caseId', description: 'Case ID' })
-  async linkEvidence(
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiConsumes('multipart/form-data')
+  async uploadEvidence(
     @Param('caseId') caseId: string,
-    @Body() body: {
-      fileName: string;
-      originalName: string;
-      mimeType: string;
-      size: number;
-      path: string;
-      description?: string;
-      category?: string;
-      transactionId?: string;
-      redFlagId?: string;
-    },
+    @UploadedFile() file: Express.Multer.File,
+    @Body('description') description: string,
+    @Body('category') category: string,
+    @Body('transactionId') transactionId: string,
+    @Body('redFlagId') redFlagId: string,
     @CurrentUser() user: CurrentUserData,
   ) {
-    return this.investigationService.linkEvidence(caseId, user.id, body);
+    // Save file and generate hash
+    const savedFile = await this.fileStorageService.saveFile(
+      caseId,
+      file.buffer,
+      file.originalname,
+      file.mimetype,
+    );
+
+    // Link evidence in database
+    return this.investigationService.linkEvidence(caseId, user.id, {
+      fileName: savedFile.fileName,
+      originalName: savedFile.originalName,
+      mimeType: savedFile.mimeType,
+      size: savedFile.size,
+      path: this.fileStorageService.getRelativePath(savedFile.path),
+      hash: savedFile.hash,
+      description,
+      category,
+      transactionId,
+      redFlagId,
+    });
   }
 
   @Get('evidence')
@@ -110,15 +132,65 @@ export class InvestigationController {
     });
   }
 
-  @Delete('evidence/:evidenceId')
-  @ApiOperation({ summary: 'Remove evidence file' })
+  @Get('evidence/:evidenceId')
+  @ApiOperation({ summary: 'Get evidence file metadata' })
   @ApiParam({ name: 'caseId', description: 'Case ID' })
   @ApiParam({ name: 'evidenceId', description: 'Evidence ID' })
-  async removeEvidence(
+  async getEvidenceById(
+    @Param('caseId') caseId: string,
+    @Param('evidenceId') evidenceId: string,
+  ) {
+    return this.investigationService.getEvidenceById(caseId, evidenceId);
+  }
+
+  @Get('evidence/:evidenceId/download')
+  @ApiOperation({ summary: 'Download evidence file' })
+  @ApiParam({ name: 'caseId', description: 'Case ID' })
+  @ApiParam({ name: 'evidenceId', description: 'Evidence ID' })
+  async downloadEvidence(
+    @Param('caseId') caseId: string,
+    @Param('evidenceId') evidenceId: string,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const evidence = await this.investigationService.getEvidenceById(caseId, evidenceId);
+    const filePath = this.fileStorageService.getAbsolutePath(evidence.path);
+    const buffer = await this.fileStorageService.getFile(filePath);
+
+    if (!buffer) {
+      res.status(404);
+      return { error: 'File not found' };
+    }
+
+    // Verify hash
+    const isValid = await this.fileStorageService.verifyHash(filePath, evidence.hash);
+    if (!isValid) {
+      res.setHeader('X-File-Warning', 'Hash verification failed');
+    }
+
+    res.setHeader('Content-Type', evidence.mimeType);
+    res.setHeader('Content-Disposition', `attachment; filename="${evidence.originalName}"`);
+    res.setHeader('X-File-Hash', evidence.hash);
+    
+    return buffer;
+  }
+
+  @Delete('evidence/:evidenceId')
+  @ApiOperation({ summary: 'Delete evidence file' })
+  @ApiParam({ name: 'caseId', description: 'Case ID' })
+  @ApiParam({ name: 'evidenceId', description: 'Evidence ID' })
+  async deleteEvidence(
     @Param('caseId') caseId: string,
     @Param('evidenceId') evidenceId: string,
     @CurrentUser() user: CurrentUserData,
   ) {
+    // Get evidence to delete file
+    const evidence = await this.investigationService.getEvidenceById(caseId, evidenceId);
+    
+    // Delete file from storage
+    const filePath = this.fileStorageService.getAbsolutePath(evidence.path);
+    await this.fileStorageService.deleteFile(filePath);
+    
+    // Remove from database
     return this.investigationService.removeEvidence(caseId, user.id, evidenceId);
   }
 
@@ -188,25 +260,37 @@ export class InvestigationController {
   }
 
   @Post('red-flags/:flagId/evidence')
-  @ApiOperation({ summary: 'Attach evidence to red flag' })
+  @ApiOperation({ summary: 'Upload evidence for red flag' })
   @ApiParam({ name: 'caseId', description: 'Case ID' })
   @ApiParam({ name: 'flagId', description: 'Red Flag ID' })
-  async attachEvidenceToRedFlag(
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiConsumes('multipart/form-data')
+  async uploadEvidenceForRedFlag(
     @Param('caseId') caseId: string,
     @Param('flagId') flagId: string,
-    @Body() body: {
-      fileName: string;
-      originalName: string;
-      mimeType: string;
-      size: number;
-      path: string;
-      description?: string;
-      category?: string;
-    },
+    @UploadedFile() file: Express.Multer.File,
+    @Body('description') description: string,
+    @Body('category') category: string,
     @CurrentUser() user: CurrentUserData,
   ) {
+    // Save file and generate hash
+    const savedFile = await this.fileStorageService.saveFile(
+      caseId,
+      file.buffer,
+      file.originalname,
+      file.mimetype,
+    );
+
+    // Link evidence in database
     return this.investigationService.linkEvidence(caseId, user.id, {
-      ...body,
+      fileName: savedFile.fileName,
+      originalName: savedFile.originalName,
+      mimeType: savedFile.mimeType,
+      size: savedFile.size,
+      path: this.fileStorageService.getRelativePath(savedFile.path),
+      hash: savedFile.hash,
+      description,
+      category,
       redFlagId: flagId,
     });
   }

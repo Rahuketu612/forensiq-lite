@@ -99,8 +99,9 @@ enum TimelineEventType {
   
   // Investigation events
   NOTE_ADDED
-  EVIDENCE_ATTACHED
-  EVIDENCE_REMOVED
+  EVIDENCE_UPLOADED
+  EVIDENCE_LINKED
+  EVIDENCE_DELETED
   
   // Transaction events
   TRANSACTION_IMPORTED
@@ -369,6 +370,9 @@ model EvidenceFile {
   mimeType     String
   size         Int      // File size in bytes
   path         String   // Storage path
+
+  // Integrity hash (SHA256)
+  hash        String   // SHA256 hash for evidence integrity
 
   // Description
   description String?
