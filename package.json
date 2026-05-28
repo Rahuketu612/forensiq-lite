@@ -5,10 +5,24 @@
   "description": "Forensic audit intelligence platform",
   "scripts": {
     "dev": "pnpm --parallel -r dev",
+    "dev:local": "pnpm services:start && pnpm --parallel -r dev",
+    "services:start": "docker-compose up -d postgres && pnpm services:wait",
+    "services:stop": "docker-compose stop postgres",
+    "services:wait": "node scripts/wait-for-postgres.js",
     "build": "pnpm -r build",
     "clean": "pnpm -r clean",
     "db:generate": "pnpm -F @forensiq/database exec prisma generate",
-    "db:push": "pnpm -F @forensiq/database exec prisma db push"
+    "db:push": "pnpm -F @forensiq/database exec prisma db push",
+    "db:migrate": "pnpm -F @forensiq/database exec prisma migrate dev",
+    "db:studio": "pnpm -F @forensiq/database exec prisma studio",
+    "db:seed": "pnpm -F @forensiq/database exec ts-node src/seed.ts",
+    "db:reset": "pnpm -F @forensiq/database exec prisma migrate reset --force",
+    "setup": "bash setup.sh",
+    "setup:local": "node scripts/setup-local.js",
+    "lint": "pnpm -r lint",
+    "lint:fix": "pnpm -r lint:fix",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "typecheck": "pnpm -r typecheck"
   },
   "devDependencies": {
     "prettier": "^3.2.5",
