@@ -374,39 +374,39 @@ async function main() {
   console.log(`✅ Created 2 investigation notes`);
 
   // Create timeline events
-  const timeline1 = await prisma.caseTimeline.create({
+  const timeline1 = await prisma.investigationTimeline.create({
     data: {
       caseId: demoCase.id,
       eventType: TimelineEventType.CASE_CREATED,
+      title: 'Case Created',
       description: 'Investigation case created by Senior Auditor Mehta',
-      entityType: 'case',
-      createdById: auditor.id,
+      userId: auditor.id,
     },
   });
 
-  await prisma.caseTimeline.createMany({
+  await prisma.investigationTimeline.createMany({
     data: [
       {
         caseId: demoCase.id,
         eventType: TimelineEventType.TRANSACTION_IMPORTED,
+        title: 'Transactions Imported',
         description: 'Bank statement imported - 20 transactions loaded',
-        entityType: 'import',
-        entityId: importRecord.id,
-        createdById: auditor.id,
+        userId: auditor.id,
+        metadata: { importId: importRecord.id },
       },
       {
         caseId: demoCase.id,
         eventType: TimelineEventType.EVIDENCE_UPLOADED,
+        title: 'Evidence Added',
         description: 'Primary bank statement uploaded',
-        entityType: 'evidence',
-        createdById: auditor.id,
+        userId: auditor.id,
       },
       {
         caseId: demoCase.id,
         eventType: TimelineEventType.NOTE_ADDED,
+        title: 'Investigation Note',
         description: 'Initial findings documented',
-        entityType: 'note',
-        createdById: auditor.id,
+        userId: auditor.id,
       },
     ],
   });
@@ -492,7 +492,6 @@ async function main() {
       data: {
         caseId: demoCase.id,
         ...flag,
-        createdById: auditor.id,
       },
     });
     console.log(`✅ Created red flag: ${flag.ruleName}`);

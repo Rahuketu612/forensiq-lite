@@ -29,7 +29,6 @@ async function bootstrap() {
   app.enableVersioning({
     type: VersioningType.URI,
     defaultVersion: '1',
-    prefix: `${globalPrefix}/`,
   });
 
   // Global prefix
