@@ -1,5 +1,16 @@
 version: '3.8'
 
+# ===========================================
+# PORT ARCHITECTURE
+# ===========================================
+# PostgreSQL: 5432 (configurable via POSTGRES_PORT)
+# Frontend (Next.js): 3000
+# Backend API (NestJS): 3001
+# Future AI Service: 3002
+# Future Worker/Queue: 3003
+# Future OCR/Parser Service: 3004
+# ===========================================
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -13,27 +24,11 @@ services:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-forensiq}']
       interval: 10s
       timeout: 5s
       retries: 5
-
-  # Optional: Redis for caching (future use)
-  # redis:
-  #   image: redis:7-alpine
-  #   container_name: forensiq-redis
-  #   restart: unless-stopped
-  #   ports:
-  #     - "${REDIS_PORT:-6379}:6379"
-  #   volumes:
-  #     - redis_data:/data
-  #   healthcheck:
-  #     test: ['CMD', 'redis-cli', 'ping']
-  #     interval: 10s
-  #     timeout: 5s
-  #     retries: 5
 
 volumes:
   postgres_data:

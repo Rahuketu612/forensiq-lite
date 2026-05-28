@@ -21,11 +21,24 @@ Reduce forensic investigation time using transaction intelligence and workflow a
 - Fund flow analysis
 - Report generation
 
+## Port Architecture
+
+| Service | Port | Config Variable | Description |
+|---------|------|-----------------|-------------|
+| Frontend (Next.js) | 3000 | - | Web application UI |
+| Backend API (NestJS) | 3001 | `API_PORT` | REST API server |
+| PostgreSQL | 5432 | `POSTGRES_PORT` | Database |
+| AI Service (Future) | 3002 | `AI_PORT` | Local AI assistance |
+| Worker/Queue (Future) | 3003 | `WORKER_PORT` | Background jobs |
+| OCR/Parser (Future) | 3004 | `OCR_PORT` | Document processing |
+
+All ports are configurable via environment variables.
+
 ## Tech Stack
 
-- **Frontend**: Next.js 14, TypeScript, Tailwind CSS, ShadCN UI
-- **Backend**: NestJS, TypeScript
-- **Database**: PostgreSQL, Prisma ORM
+- **Frontend**: Next.js 14, TypeScript, Tailwind CSS, ShadCN UI (Port 3000)
+- **Backend**: NestJS, TypeScript (Port 3001)
+- **Database**: PostgreSQL (Port 5432), Prisma ORM
 
 ## Project Structure
 
@@ -213,8 +226,10 @@ pnpm db:seed
 
 | Variable | Description | Default |
 |----------|-------------|---------|
+| `API_PORT` | API server port | `3001` |
+| `NEXT_PUBLIC_API_URL` | Frontend API URL | `http://localhost:3001` |
 | `DATABASE_URL` | PostgreSQL connection string | `postgresql://...` |
-| `PORT` | API server port | `3001` |
+| `POSTGRES_PORT` | PostgreSQL port | `5432` |
 | `CORS_ORIGINS` | Allowed CORS origins | `http://localhost:3000` |
 | `NODE_ENV` | Environment mode | `development` |
 
