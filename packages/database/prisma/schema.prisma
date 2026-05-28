@@ -83,6 +83,30 @@ enum FeedbackType {
   IGNORE
 }
 
+enum InvestigationStatus {
+  OPEN
+  UNDER_REVIEW
+  RESOLVED
+  FALSE_POSITIVE
+}
+
+enum TimelineEventType {
+  // Red flag events
+  FLAG_CREATED
+  FLAG_REVIEWED
+  FLAG_STATUS_CHANGED
+  FLAG_FEEDBACK_ADDED
+  
+  // Investigation events
+  NOTE_ADDED
+  EVIDENCE_ATTACHED
+  EVIDENCE_REMOVED
+  
+  // Transaction events
+  TRANSACTION_IMPORTED
+  TRANSACTION_EXAMINED
+}
+
 // ============================================
 // MODELS
 // ============================================
@@ -255,14 +279,15 @@ model RedFlag {
   transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
 
   // Flag details
+  title       String          // Short title for the flag
   explanation String          // Explanation of why this was flagged
   severity    RedFlagSeverity @default(MEDIUM)
 
-  // Review tracking
-  reviewed    Boolean       @default(false)
-  reviewStatus ReviewStatus  @default(PENDING)
-  reviewedBy   String?
-  reviewedAt   DateTime?
+  // Investigation state
+  status          InvestigationStatus @default(OPEN)
+  reviewed        Boolean             @default(false)
+  reviewedBy      String?
+  reviewedAt      DateTime?
 
   // Feedback
   feedbackType  FeedbackType?
@@ -271,16 +296,20 @@ model RedFlag {
   feedbackById  String?
   feedbackAt    DateTime?
 
+  // Audit trail
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
-  evidenceFiles EvidenceFile[]
+  evidenceFiles   EvidenceFile[]
   feedbackHistory RedFlagFeedback[]
+  investigationNotes InvestigationNote[]
+  timeline        InvestigationTimeline[]
 
   @@index([caseId])
   @@index([transactionId])
   @@index([severity])
-  @@index([reviewStatus])
+  @@index([status])
 }
 
 model RedFlagFeedback {
@@ -305,20 +334,28 @@ model InvestigationNote {
   caseId    String
   case      Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
 
+  // Content
+  title     String   // Note title
   content   String   // Note content
 
   // Author
   authorId  String
   author    User     @relation(fields: [authorId], references: [id])
 
-  // Optional link to transaction
+  // Optional links to related entities
   transactionId String?
+  transaction   Transaction? @relation(fields: [transactionId], references: [id], onDelete: SetNull)
+  
+  redFlagId     String?
+  redFlag       RedFlag? @relation(fields: [redFlagId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([caseId])
   @@index([authorId])
+  @@index([transactionId])
+  @@index([redFlagId])
 }
 
 model EvidenceFile {
@@ -337,9 +374,12 @@ model EvidenceFile {
   description String?
   category   String?   // DOCUMENT, SCREENSHOT, REPORT, etc.
 
-  // Linked to red flag (optional)
-  redFlagId  String?
-  redFlag    RedFlag?  @relation(fields: [redFlagId], references: [id], onDelete: SetNull)
+  // Linked to transaction or red flag (optional)
+  transactionId String?
+  transaction   Transaction? @relation(fields: [transactionId], references: [id], onDelete: SetNull)
+  
+  redFlagId     String?
+  redFlag       RedFlag?  @relation(fields: [redFlagId], references: [id], onDelete: SetNull)
 
   // Upload tracking
   uploadedById String
@@ -347,5 +387,41 @@ model EvidenceFile {
   uploadedAt   DateTime @default(now())
 
   @@index([caseId])
+  @@index([transactionId])
   @@index([redFlagId])
+}
+
+// Investigation timeline for audit trail
+model InvestigationTimeline {
+  id        String   @id @default(cuid())
+  caseId    String
+  case      Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  // Reference to related entity
+  redFlagId     String?
+  redFlag       RedFlag? @relation(fields: [redFlagId], references: [id], onDelete: Cascade)
+
+  transactionId String?
+  transaction   Transaction? @relation(fields: [transactionId], references: [id], onDelete: SetNull)
+
+  // Timeline entry
+  eventType  TimelineEventType
+  title      String
+  description String?
+  
+  // User who performed the action
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+
+  // Optional metadata (JSON)
+  metadata   Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([caseId])
+  @@index([redFlagId])
+  @@index([transactionId])
+  @@index([userId])
+  @@index([eventType])
+  @@index([createdAt])
 }

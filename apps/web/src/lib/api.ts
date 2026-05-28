@@ -121,6 +121,64 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ feedback, type }),
     }),
+
+  // Investigation - Notes
+  createNote: (caseId: string, data: { title: string; content: string; transactionId?: string; redFlagId?: string }) =>
+    request<InvestigationNote>(`/cases/${caseId}/notes`, { method: 'POST', body: JSON.stringify(data) }),
+
+  getNotes: (caseId: string, filters?: InvestigationFilters) => {
+    const params = new URLSearchParams();
+    if (filters) {
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined && value !== '') params.set(key, String(value));
+      });
+    }
+    const query = params.toString() ? '?' + params.toString() : '';
+    return request<InvestigationNoteList>(`/cases/${caseId}/notes${query}`);
+  },
+
+  // Investigation - Evidence
+  linkEvidence: (caseId: string, data: any) =>
+    request<EvidenceFile>(`/cases/${caseId}/evidence`, { method: 'POST', body: JSON.stringify(data) }),
+
+  getEvidence: (caseId: string, filters?: { transactionId?: string; redFlagId?: string }) => {
+    const params = new URLSearchParams();
+    if (filters) {
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined && value !== '') params.set(key, String(value));
+      });
+    }
+    const query = params.toString() ? '?' + params.toString() : '';
+    return request<EvidenceFileList>(`/cases/${caseId}/evidence${query}`);
+  },
+
+  // Investigation - Timeline
+  getTimeline: (caseId: string, filters?: { redFlagId?: string; transactionId?: string }) => {
+    const params = new URLSearchParams();
+    if (filters) {
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined && value !== '') params.set(key, String(value));
+      });
+    }
+    const query = params.toString() ? '?' + params.toString() : '';
+    return request<TimelineList>(`/cases/${caseId}/timeline${query}`);
+  },
+
+  // Investigation - Red Flag Details
+  getRedFlagDetails: (caseId: string, flagId: string) =>
+    request<RedFlagDetails>(`/cases/${caseId}/red-flags/${flagId}`),
+
+  updateRedFlagStatus: (caseId: string, flagId: string, status: string, note?: string) =>
+    request<RedFlag>(`/cases/${caseId}/red-flags/${flagId}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ status, note }),
+    }),
+
+  addNoteToRedFlag: (caseId: string, flagId: string, data: { title: string; content: string }) =>
+    request<InvestigationNote>(`/cases/${caseId}/red-flags/${flagId}/notes`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 };
 
 export interface User {
@@ -270,6 +328,121 @@ export interface RunRedFlagsResult {
     bySeverity: Record<string, number>;
     byRule: Record<string, number>;
   };
+}
+
+// Investigation
+export interface InvestigationNote {
+  id: string;
+  caseId: string;
+  title: string;
+  content: string;
+  authorId: string;
+  author?: { id: string; name: string; email: string };
+  transactionId?: string;
+  transaction?: { id: string; date: string; amount: number; type: string };
+  redFlagId?: string;
+  redFlag?: { id: string; ruleName: string; severity: string; status: string };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface InvestigationNoteList {
+  notes: InvestigationNote[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface EvidenceFile {
+  id: string;
+  caseId: string;
+  fileName: string;
+  originalName: string;
+  mimeType: string;
+  size: number;
+  path: string;
+  description?: string;
+  category?: string;
+  transactionId?: string;
+  transaction?: { id: string; date: string; amount: number };
+  redFlagId?: string;
+  redFlag?: { id: string; ruleName: string; severity: string };
+  uploadedById: string;
+  uploadedBy?: { id: string; name: string; email: string };
+  uploadedAt: string;
+}
+
+export interface EvidenceFileList {
+  files: EvidenceFile[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface TimelineEntry {
+  id: string;
+  caseId: string;
+  eventType: string;
+  title: string;
+  description?: string;
+  redFlagId?: string;
+  redFlag?: { id: string; ruleName: string; severity: string; status: string };
+  transactionId?: string;
+  transaction?: { id: string; date: string; amount: number; type: string };
+  userId: string;
+  user?: { id: string; name: string; email: string };
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+}
+
+export interface TimelineList {
+  entries: TimelineEntry[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface RedFlagDetails {
+  id: string;
+  caseId: string;
+  ruleId?: string;
+  ruleName: string;
+  transactionId: string;
+  title: string;
+  explanation: string;
+  severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  status: 'OPEN' | 'UNDER_REVIEW' | 'RESOLVED' | 'FALSE_POSITIVE';
+  reviewed: boolean;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  feedbackType?: string;
+  feedbackNote?: string;
+  createdAt: string;
+  updatedAt: string;
+  transaction: {
+    id: string;
+    date: string;
+    description?: string;
+    amount: number;
+    type: string;
+    counterparty?: string;
+    balance?: number;
+    mode: string;
+  };
+  evidenceFiles: EvidenceFile[];
+  investigationNotes: InvestigationNote[];
+  timeline: TimelineEntry[];
+}
+
+export interface InvestigationFilters {
+  page?: number;
+  limit?: number;
+  transactionId?: string;
+  redFlagId?: string;
+  authorId?: string;
 }
 
 export default api;
