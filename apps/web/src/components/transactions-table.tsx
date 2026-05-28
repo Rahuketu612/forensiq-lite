@@ -1,6 +1,6 @@
 'use client';
 
-import { Transaction } from '@/lib/import';
+import { Transaction } from '@/lib/api';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -32,6 +32,18 @@ const modeLabels: Record<string, string> = {
   BANK: 'Bank',
   OTHER: 'Other',
 };
+
+function formatCurrency(amount: number): string {
+  return `₹${amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function formatDate(date: string | Date): string {
+  return new Date(date).toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  });
+}
 
 export function TransactionsTable({ transactions, isLoading }: TransactionsTableProps) {
   if (isLoading) {
@@ -91,11 +103,7 @@ export function TransactionsTable({ transactions, isLoading }: TransactionsTable
               {transactions.map((tx) => (
                 <TableRow key={tx.id}>
                   <TableCell className="font-mono text-sm">
-                    {new Date(tx.date).toLocaleDateString('en-IN', {
-                      day: '2-digit',
-                      month: 'short',
-                      year: 'numeric',
-                    })}
+                    {formatDate(tx.date)}
                   </TableCell>
                   <TableCell className="max-w-[300px] truncate" title={tx.description || ''}>
                     {tx.description || '-'}
@@ -119,12 +127,11 @@ export function TransactionsTable({ transactions, isLoading }: TransactionsTable
                   <TableCell className={`text-right font-mono font-medium ${
                     tx.type === 'CREDIT' ? 'text-green-600' : 'text-red-600'
                   }`}>
-                    {tx.type === 'CREDIT' ? '+' : '-'}{' '}
-                    ₹{tx.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    {tx.type === 'CREDIT' ? '+' : '-'} {formatCurrency(tx.amount)}
                   </TableCell>
                   <TableCell className="text-right font-mono text-muted-foreground">
                     {tx.balance !== undefined && tx.balance !== null
-                      ? `₹${tx.balance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
+                      ? formatCurrency(tx.balance)
                       : '-'}
                   </TableCell>
                 </TableRow>

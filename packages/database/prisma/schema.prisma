@@ -187,25 +187,21 @@ model Transaction {
 
   // Core Data
   date        DateTime
-  description String?
+  description String?      // Also known as: narration, particulars, details
   amount      Float
   type        TransactionType
+
+  // Balance
   balance     Float?
 
   // Categorization
-  counterparty  String?
-  mode          TransactionMode @default(OTHER)
-  category      String?
-  subcategory   String?
+  counterparty   String?
+  mode           TransactionMode @default(OTHER)
+  referenceNumber String?  // Cheque number, UPI ID, reference, etc.
 
   // Import tracking
   rowNumber Int?
-  rawData   Json?
-
-  // Normalization
-  normalizedDate         DateTime?
-  normalizedAmount      Float?
-  normalizedDescription String?
+  rawData   Json?          // Original raw data for traceability
 
   // Risk (for MVP, simple risk tracking)
   riskScore   Float    @default(0)

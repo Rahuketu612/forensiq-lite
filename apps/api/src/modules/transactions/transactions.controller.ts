@@ -8,10 +8,10 @@ import {
   UploadedFile,
   ParseFilePipe,
   MaxFileSizeValidator,
-  Body,
+  NotFoundException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { TransactionsService } from './transactions.service';
 import { CurrentUser, CurrentUserData } from '../../common/decorators/current-user.decorator';
 
@@ -22,7 +22,7 @@ export class TransactionsController {
   constructor(private readonly transactionsService: TransactionsService) {}
 
   @Post('import')
-  @ApiOperation({ summary: 'Import transactions from CSV/XLSX' })
+  @ApiOperation({ summary: 'Import transactions from CSV/XLSX file' })
   @ApiParam({ name: 'caseId', description: 'Case ID' })
   @UseInterceptors(FileInterceptor('file'))
   async importTransactions(
@@ -39,7 +39,7 @@ export class TransactionsController {
   }
 
   @Get('transactions')
-  @ApiOperation({ summary: 'Get transactions for a case' })
+  @ApiOperation({ summary: 'Get transactions for a case with filters and pagination' })
   @ApiParam({ name: 'caseId', description: 'Case ID' })
   async getTransactions(
     @Param('caseId') caseId: string,
@@ -50,6 +50,8 @@ export class TransactionsController {
     @Query('type') type?: string,
     @Query('mode') mode?: string,
     @Query('search') search?: string,
+    @Query('minAmount') minAmount?: string,
+    @Query('maxAmount') maxAmount?: string,
   ) {
     return this.transactionsService.getTransactions(caseId, {
       page,
@@ -59,7 +61,16 @@ export class TransactionsController {
       type,
       mode,
       search,
+      minAmount: minAmount ? parseFloat(minAmount) : undefined,
+      maxAmount: maxAmount ? parseFloat(maxAmount) : undefined,
     });
+  }
+
+  @Get('transactions/stats')
+  @ApiOperation({ summary: 'Get transaction statistics for a case' })
+  @ApiParam({ name: 'caseId', description: 'Case ID' })
+  async getStats(@Param('caseId') caseId: string) {
+    return this.transactionsService.getStats(caseId);
   }
 
   @Get('imports')
@@ -67,5 +78,20 @@ export class TransactionsController {
   @ApiParam({ name: 'caseId', description: 'Case ID' })
   async getImports(@Param('caseId') caseId: string) {
     return this.transactionsService.getImports(caseId);
+  }
+
+  @Get('transactions/:transactionId')
+  @ApiOperation({ summary: 'Get single transaction by ID' })
+  @ApiParam({ name: 'caseId', description: 'Case ID' })
+  @ApiParam({ name: 'transactionId', description: 'Transaction ID' })
+  async getTransaction(
+    @Param('caseId') caseId: string,
+    @Param('transactionId') transactionId: string,
+  ) {
+    const transaction = await this.transactionsService.getTransaction(transactionId);
+    if (transaction.caseId !== caseId) {
+      throw new NotFoundException('Transaction not found in this case');
+    }
+    return transaction;
   }
 }

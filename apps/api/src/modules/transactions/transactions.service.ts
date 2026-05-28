@@ -10,22 +10,28 @@ export class TransactionsService {
   private readonly parser = new TransactionParserService();
 
   /**
-   * Import transactions from file
+   * Import transactions from file (CSV/XLSX)
+   * Transactions must remain traceable to original import file.
    */
   async importTransactions(
     caseId: string,
     file: Express.Multer.File,
     userId: string
-  ) {
+  ): Promise<ImportResult> {
     // Verify case exists
     const caseData = await prisma.case.findUnique({ where: { id: caseId } });
     if (!caseData) {
       throw new NotFoundException('Case not found');
     }
 
-    // Validate file
-    const validTypes = ['text/csv', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
-    if (!validTypes.includes(file.mimetype) && !file.originalname.endsWith('.csv') && !file.originalname.endsWith('.xlsx')) {
+    // Validate file type - CSV/XLSX only
+    const validTypes = [
+      'text/csv',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    ];
+    const ext = file.originalname.split('.').pop()?.toLowerCase();
+    if (!validTypes.includes(file.mimetype) && ext !== 'csv' && ext !== 'xlsx') {
       throw new BadRequestException('Invalid file type. Only CSV and XLSX allowed.');
     }
 
@@ -33,7 +39,7 @@ export class TransactionsService {
     const importRecord = await prisma.transactionImport.create({
       data: {
         caseId,
-        fileName: `import_${Date.now()}`,
+        fileName: `import_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
         originalName: file.originalname,
         mimeType: file.mimetype,
         importedById: userId,
@@ -42,10 +48,10 @@ export class TransactionsService {
     });
 
     try {
-      // Parse file
-      let parseResult: { transactions: ParsedTransaction[]; errors: { row: number; message: string; value: string[] }[] };
+      // Parse file based on type
+      let parseResult: ParseResult;
       
-      if (file.mimetype === 'text/csv' || file.originalname.endsWith('.csv')) {
+      if (ext === 'csv') {
         const content = file.buffer.toString('utf-8');
         parseResult = this.parser.parseCSV(content);
       } else {
@@ -61,32 +67,33 @@ export class TransactionsService {
 
       if (parseResult.transactions.length > 0) {
         await prisma.$transaction(async (tx) => {
-          for (const tx_data of parseResult.transactions) {
+          for (const txData of parseResult.transactions) {
             try {
               await tx.transaction.create({
                 data: {
                   importId: importRecord.id,
                   caseId,
-                  date: tx_data.date,
-                  description: tx_data.description,
-                  amount: tx_data.amount,
-                  type: tx_data.type,
-                  balance: tx_data.balance,
-                  counterparty: tx_data.counterparty,
-                  mode: tx_data.mode,
-                  rowNumber: tx_data.rowNumber,
-                  rawData: tx_data.rawData as object,
+                  date: txData.date,
+                  description: txData.description,
+                  amount: txData.amount,
+                  type: txData.type,
+                  balance: txData.balance,
+                  counterparty: txData.counterparty,
+                  mode: txData.mode,
+                  rowNumber: txData.rowNumber,
+                  rawData: txData.rawData as object,
                 },
               });
               successCount++;
             } catch (error) {
               failedCount++;
+              this.logger.warn(`Failed to store transaction row ${txData.rowNumber}:`, error);
             }
           }
         });
       }
 
-      // Update import status
+      // Update import status to COMPLETED
       await prisma.transactionImport.update({
         where: { id: importRecord.id },
         data: {
@@ -100,7 +107,8 @@ export class TransactionsService {
 
       return {
         importId: importRecord.id,
-        totalRows: parseResult.transactions.length,
+        fileName: file.originalname,
+        totalRows: parseResult.transactions.length + parseResult.errors.length,
         successRows: successCount,
         failedRows: failedCount,
         errors: parseResult.errors,
@@ -119,28 +127,41 @@ export class TransactionsService {
   }
 
   /**
-   * Get transactions for a case
+   * Get transactions with filters and pagination
    */
-  async getTransactions(caseId: string, options: {
-    page?: number;
-    limit?: number;
-    startDate?: string;
-    endDate?: string;
-    type?: string;
-    mode?: string;
-    search?: string;
-  } = {}) {
-    const { page = 1, limit = 50, startDate, endDate, type, mode, search } = options;
+  async getTransactions(
+    caseId: string,
+    options: TransactionFilters = {}
+  ): Promise<TransactionListResult> {
+    const {
+      page = 1,
+      limit = 50,
+      startDate,
+      endDate,
+      type,
+      mode,
+      search,
+      minAmount,
+      maxAmount,
+    } = options;
 
-    const where: Record<string, unknown> = { caseId };
+    // Build where clause
+    const where: TransactionWhere = { caseId };
 
+    // Date range filter
     if (startDate || endDate) {
       where.date = {};
-      if (startDate) (where.date as Record<string, unknown>).gte = new Date(startDate);
-      if (endDate) (where.date as Record<string, unknown>).lte = new Date(endDate);
+      if (startDate) where.date.gte = new Date(startDate);
+      if (endDate) where.date.lte = new Date(endDate);
     }
-    if (type) where.type = type;
-    if (mode) where.mode = mode;
+
+    // Type filter
+    if (type) where.type = type as 'CREDIT' | 'DEBIT' | 'TRANSFER' | 'REFUND' | 'FEE' | 'OTHER';
+
+    // Mode filter
+    if (mode) where.mode = mode as any;
+
+    // Search filter (narration/counterparty)
     if (search) {
       where.OR = [
         { description: { contains: search, mode: 'insensitive' } },
@@ -148,12 +169,30 @@ export class TransactionsService {
       ];
     }
 
+    // Amount range filter
+    if (minAmount !== undefined || maxAmount !== undefined) {
+      where.amount = {};
+      if (minAmount !== undefined) where.amount.gte = minAmount;
+      if (maxAmount !== undefined) where.amount.lte = maxAmount;
+    }
+
+    // Query with pagination
+    const skip = (page - 1) * limit;
     const [transactions, total] = await Promise.all([
       prisma.transaction.findMany({
         where,
         orderBy: { date: 'desc' },
-        skip: (page - 1) * limit,
+        skip,
         take: limit,
+        include: {
+          import: {
+            select: {
+              id: true,
+              originalName: true,
+              importedAt: true,
+            },
+          },
+        },
       }),
       prisma.transaction.count({ where }),
     ]);
@@ -168,12 +207,142 @@ export class TransactionsService {
   }
 
   /**
+   * Get transaction statistics for a case
+   */
+  async getStats(caseId: string): Promise<TransactionStats> {
+    const [transactions, byType, byMode] = await Promise.all([
+      prisma.transaction.findMany({ where: { caseId } }),
+      prisma.transaction.groupBy({
+        by: ['type'],
+        where: { caseId },
+        _count: true,
+        _sum: { amount: true },
+      }),
+      prisma.transaction.groupBy({
+        by: ['mode'],
+        where: { caseId },
+        _count: true,
+      }),
+    ]);
+
+    const totalAmount = transactions.reduce((sum, tx) => sum + tx.amount, 0);
+    const creditTotal = transactions.filter(tx => tx.type === 'CREDIT').reduce((sum, tx) => sum + tx.amount, 0);
+    const debitTotal = transactions.filter(tx => tx.type === 'DEBIT').reduce((sum, tx) => sum + tx.amount, 0);
+
+    return {
+      totalTransactions: transactions.length,
+      totalAmount,
+      creditTotal,
+      debitTotal,
+      netFlow: creditTotal - debitTotal,
+      byType: byType.map(t => ({
+        type: t.type,
+        count: t._count,
+        amount: t._sum.amount || 0,
+      })),
+      byMode: byMode.map(m => ({
+        mode: m.mode,
+        count: m._count,
+      })),
+    };
+  }
+
+  /**
    * Get transaction imports for a case
    */
   async getImports(caseId: string) {
     return prisma.transactionImport.findMany({
       where: { caseId },
       orderBy: { importedAt: 'desc' },
+      include: {
+        importedBy: {
+          select: { id: true, name: true, email: true },
+        },
+        _count: {
+          select: { transactions: true },
+        },
+      },
     });
   }
+
+  /**
+   * Get single transaction by ID
+   */
+  async getTransaction(id: string) {
+    const transaction = await prisma.transaction.findUnique({
+      where: { id },
+      include: {
+        import: true,
+        case: {
+          select: { id: true, caseNumber: true, title: true },
+        },
+      },
+    });
+
+    if (!transaction) {
+      throw new NotFoundException('Transaction not found');
+    }
+
+    return transaction;
+  }
+}
+
+// Type definitions
+interface TransactionFilters {
+  page?: number;
+  limit?: number;
+  startDate?: string;
+  endDate?: string;
+  type?: string;
+  mode?: string;
+  search?: string;
+  minAmount?: number;
+  maxAmount?: number;
+}
+
+interface TransactionWhere {
+  caseId: string;
+  date?: { gte?: Date; lte?: Date };
+  type?: string;
+  mode?: string;
+  OR?: Array<{ description?: { contains: string; mode: 'insensitive' }; counterparty?: { contains: string; mode: 'insensitive' } }>;
+  amount?: { gte?: number; lte?: number };
+}
+
+interface ImportResult {
+  importId: string;
+  fileName: string;
+  totalRows: number;
+  successRows: number;
+  failedRows: number;
+  errors: ParseError[];
+}
+
+interface ParseResult {
+  transactions: ParsedTransaction[];
+  errors: ParseError[];
+}
+
+interface ParseError {
+  row: number;
+  message: string;
+  value: string[];
+}
+
+interface TransactionListResult {
+  transactions: any[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+interface TransactionStats {
+  totalTransactions: number;
+  totalAmount: number;
+  creditTotal: number;
+  debitTotal: number;
+  netFlow: number;
+  byType: { type: string; count: number; amount: number }[];
+  byMode: { mode: string; count: number }[];
 }

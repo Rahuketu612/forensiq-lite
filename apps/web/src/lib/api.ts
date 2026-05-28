@@ -2,8 +2,8 @@
 // Uses NEXT_PUBLIC_API_URL from environment (no hardcoded localhost)
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-const API_PREFIX = process.env.API_PREFIX || 'api';
-const API_VERSION = process.env.API_VERSION || 'v1';
+const API_PREFIX = process.env.NEXT_PUBLIC_API_PREFIX || 'api';
+const API_VERSION = process.env.NEXT_PUBLIC_API_VERSION || 'v1';
 
 function getAuthHeaders(): HeadersInit {
   if (typeof window === 'undefined') return {};
@@ -36,6 +36,7 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 }
 
 export const api = {
+  // Auth
   login: (email: string, password: string) =>
     request<{ token: string; user: User }>('/auth/login', {
       method: 'POST',
@@ -50,22 +51,33 @@ export const api = {
 
   me: () => request<User>('/auth/me'),
 
+  // Cases
   getCases: () => request<Case[]>('/cases'),
-
   getCase: (id: string) => request<Case>(`/cases/${id}`),
-
   createCase: (data: { title: string; description?: string; clientName?: string }) =>
     request<Case>('/cases', { method: 'POST', body: JSON.stringify(data) }),
 
-  getTransactions: (caseId: string, params?: Record<string, string>) => {
-    const query = params ? '?' + new URLSearchParams(params).toString() : '';
+  // Transactions
+  getTransactions: (caseId: string, params?: TransactionFilters) => {
+    const searchParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== '' && value !== null) {
+          searchParams.set(key, String(value));
+        }
+      });
+    }
+    const query = searchParams.toString() ? '?' + searchParams.toString() : '';
     return request<TransactionList>(`/cases/${caseId}/transactions${query}`);
   },
+
+  getTransactionStats: (caseId: string) =>
+    request<TransactionStats>(`/cases/${caseId}/transactions/stats`),
 
   getImports: (caseId: string) =>
     request<TransactionImport[]>(`/cases/${caseId}/imports`),
 
-  importTransactions: async (caseId: string, file: File) => {
+  importTransactions: async (caseId: string, file: File): Promise<ImportResult> => {
     const formData = new FormData();
     formData.append('file', file);
     const token = localStorage.getItem('token');
@@ -113,6 +125,11 @@ export interface Transaction {
   mode: string;
   riskScore: number;
   createdAt: string;
+  import?: {
+    id: string;
+    originalName: string;
+    importedAt: string;
+  };
 }
 
 export interface TransactionList {
@@ -121,6 +138,28 @@ export interface TransactionList {
   page: number;
   limit: number;
   totalPages: number;
+}
+
+export interface TransactionFilters {
+  page?: number;
+  limit?: number;
+  startDate?: string;
+  endDate?: string;
+  type?: string;
+  mode?: string;
+  search?: string;
+  minAmount?: number;
+  maxAmount?: number;
+}
+
+export interface TransactionStats {
+  totalTransactions: number;
+  totalAmount: number;
+  creditTotal: number;
+  debitTotal: number;
+  netFlow: number;
+  byType: { type: string; count: number; amount: number }[];
+  byMode: { mode: string; count: number }[];
 }
 
 export interface TransactionImport {
@@ -134,6 +173,17 @@ export interface TransactionImport {
   successRows: number;
   failedRows: number;
   importedAt: string;
+  importedBy?: { id: string; name: string; email: string };
+  _count?: { transactions: number };
+}
+
+export interface ImportResult {
+  importId: string;
+  fileName: string;
+  totalRows: number;
+  successRows: number;
+  failedRows: number;
+  errors: { row: number; message: string; value: string[] }[];
 }
 
 export default api;

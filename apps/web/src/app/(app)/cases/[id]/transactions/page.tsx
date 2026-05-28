@@ -4,8 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts';
-import { caseApi, Case } from '@/lib/cases';
-import { importApi, Transaction, TransactionFilters } from '@/lib/import';
+import { api, Transaction, TransactionFilters, TransactionStats } from '@/lib/api';
 import { TransactionsTable } from '@/components/transactions-table';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,14 +12,19 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ArrowLeft, Upload, Search, Filter, ChevronLeft, ChevronRight, FileSpreadsheet, Loader2 } from 'lucide-react';
 
+function formatCurrency(amount: number): string {
+  return `₹${amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
 export default function TransactionsPage() {
   const router = useRouter();
   const params = useParams();
   const caseId = params.id as string;
   const { isAuthenticated, isLoading: authLoading } = useAuth();
 
-  const [caseData, setCaseData] = useState<Case | null>(null);
+  const [caseData, setCaseData] = useState<{ title: string } | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [stats, setStats] = useState<TransactionStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [pagination, setPagination] = useState({
     page: 1,
@@ -41,7 +45,7 @@ export default function TransactionsPage() {
   const fetchTransactions = useCallback(async () => {
     try {
       setIsLoading(true);
-      const response = await importApi.getTransactions(caseId, {
+      const response = await api.getTransactions(caseId, {
         page: pagination.page,
         limit: pagination.limit,
         ...filters,
@@ -59,9 +63,18 @@ export default function TransactionsPage() {
     }
   }, [caseId, pagination.page, pagination.limit, filters]);
 
+  const fetchStats = useCallback(async () => {
+    try {
+      const data = await api.getTransactionStats(caseId);
+      setStats(data);
+    } catch (err) {
+      console.error('Failed to fetch stats:', err);
+    }
+  }, [caseId]);
+
   const fetchCase = useCallback(async () => {
     try {
-      const data = await caseApi.getById(caseId);
+      const data = await api.getCase(caseId);
       setCaseData(data);
     } catch (err) {
       console.error('Failed to fetch case:', err);
@@ -77,8 +90,9 @@ export default function TransactionsPage() {
     if (isAuthenticated) {
       fetchCase();
       fetchTransactions();
+      fetchStats();
     }
-  }, [authLoading, isAuthenticated, router, fetchCase, fetchTransactions]);
+  }, [authLoading, isAuthenticated, router, fetchCase, fetchTransactions, fetchStats]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -140,7 +154,7 @@ export default function TransactionsPage() {
             <CardContent className="pt-6">
               <p className="text-sm text-muted-foreground">Total Credits</p>
               <p className="text-2xl font-bold text-green-600">
-                ₹{(caseData?.totalCredits || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                {formatCurrency(stats?.creditTotal || 0)}
               </p>
             </CardContent>
           </Card>
@@ -148,7 +162,7 @@ export default function TransactionsPage() {
             <CardContent className="pt-6">
               <p className="text-sm text-muted-foreground">Total Debits</p>
               <p className="text-2xl font-bold text-red-600">
-                ₹{(caseData?.totalDebits || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                {formatCurrency(stats?.debitTotal || 0)}
               </p>
             </CardContent>
           </Card>
@@ -156,9 +170,9 @@ export default function TransactionsPage() {
             <CardContent className="pt-6">
               <p className="text-sm text-muted-foreground">Net Flow</p>
               <p className={`text-2xl font-bold ${
-                (caseData?.netFlow || 0) >= 0 ? 'text-green-600' : 'text-red-600'
+                (stats?.netFlow || 0) >= 0 ? 'text-green-600' : 'text-red-600'
               }`}>
-                ₹{(caseData?.netFlow || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                {formatCurrency(stats?.netFlow || 0)}
               </p>
             </CardContent>
           </Card>
@@ -166,7 +180,7 @@ export default function TransactionsPage() {
             <CardContent className="pt-6">
               <p className="text-sm text-muted-foreground">Transactions</p>
               <p className="text-2xl font-bold">
-                {(caseData?.transactionCount || 0).toLocaleString()}
+                {(stats?.totalTransactions || 0).toLocaleString()}
               </p>
             </CardContent>
           </Card>
@@ -257,6 +271,7 @@ export default function TransactionsPage() {
                 <Input
                   type="date"
                   className="w-auto"
+                  value={filters.startDate || ''}
                   onChange={(e) => handleFilterChange('startDate', e.target.value)}
                 />
               </div>
@@ -265,6 +280,7 @@ export default function TransactionsPage() {
                 <Input
                   type="date"
                   className="w-auto"
+                  value={filters.endDate || ''}
                   onChange={(e) => handleFilterChange('endDate', e.target.value)}
                 />
               </div>
