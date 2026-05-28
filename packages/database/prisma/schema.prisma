@@ -62,9 +62,10 @@ enum ImportStatus {
   COMPLETED
   FAILED
   
-  // PDF Processing
+  // Mapping Status
+  NEEDS_MANUAL_MAPPING // Awaiting column mapping
+  MAPPING_CONFIRMED    // Mapping confirmed, ready for import
   EXTRACTED_TEXT       // PDF text extracted, awaiting mapping
-  NEEDS_MANUAL_MAPPING // Columns could not be auto-detected
   
   // OCR Status
   OCR_PENDING
@@ -216,6 +217,11 @@ model TransactionImport {
   ocrText        String?
   ocrConfidence  Float?                     // 0-100 confidence score
   ocrCompletedAt DateTime?
+
+  // Column Mapping Configuration
+  mappingConfig   Json?                     // Stores column mapping used for import
+  mappedBy        String?                    // User ID who confirmed mapping
+  mappedAt        DateTime?                  // When mapping was confirmed
 
   // Relations
   transactions Transaction[]
