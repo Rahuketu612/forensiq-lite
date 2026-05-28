@@ -13,7 +13,7 @@ import { FileUploadComponent } from '@/components/file-upload';
 import { RecentImports } from '@/components/recent-imports';
 import {
   ArrowLeft, FileText, AlertTriangle, Upload, Play, StickyNote, Paperclip,
-  Eye, Clock, CheckCircle, MessageSquare, Loader2
+  Eye, Clock, CheckCircle, MessageSquare, Loader2, Download
 } from 'lucide-react';
 
 const eventTypeLabels: Record<string, string> = {
@@ -145,6 +145,12 @@ export default function CaseWorkspacePage() {
               <Button variant="outline" size="sm">
                 <Eye className="h-4 w-4 mr-2" />
                 Transactions
+              </Button>
+            </Link>
+            <Link href={`/cases/${caseId}/report`}>
+              <Button variant="outline" size="sm">
+                <FileText className="h-4 w-4 mr-2" />
+                Report
               </Button>
             </Link>
             <Link href={`/cases/${caseId}/red-flags`}>
@@ -311,6 +317,13 @@ export default function CaseWorkspacePage() {
                   <Button variant="outline" className="w-full justify-start">
                     <FileText className="h-4 w-4 mr-2" />
                     View Transactions
+                  </Button>
+                </Link>
+                <Link href={`/cases/${caseId}/report`} className="block">
+                  <Button variant="outline" className="w-full justify-start text-green-700 border-green-200 hover:bg-green-50">
+                    <Download className="h-4 w-4 mr-2" />
+                    Export Report
+                    <Badge variant="outline" className="ml-auto text-green-600 border-green-300">PDF</Badge>
                   </Button>
                 </Link>
               </CardContent>
