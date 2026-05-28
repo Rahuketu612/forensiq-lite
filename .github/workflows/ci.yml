@@ -10,7 +10,7 @@ jobs:
   validate:
     name: Validate
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -27,25 +27,60 @@ jobs:
           cache: 'pnpm'
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install
 
       - name: Type check (database)
-        run: pnpm -F @forensiq/database exec pnpm exec tsc --noEmit || true
+        run: pnpm -F @forensiq/database exec pnpm exec tsc --noEmit
 
       - name: Type check (shared)
-        run: pnpm -F @forensiq/shared exec pnpm exec tsc --noEmit || true
+        run: pnpm -F @forensiq/shared exec pnpm exec tsc --noEmit
+
+      - name: Type check (api)
+        run: pnpm -F @forensiq/api exec pnpm exec tsc --noEmit
+
+      - name: Type check (web)
+        run: pnpm -F @forensiq/web exec pnpm exec tsc --noEmit
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: validate
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install
 
       - name: Build database package
-        run: pnpm -F @forensiq/database build || true
+        run: pnpm -F @forensiq/database build
 
       - name: Build shared package
-        run: pnpm -F @forensiq/shared build || true
+        run: pnpm -F @forensiq/shared build
+
+      - name: Build API package
+        run: pnpm -F @forensiq/api build
+
+      - name: Build web package
+        run: pnpm -F @forensiq/web build
 
   lint:
     name: Lint
     runs-on: ubuntu-latest
     needs: validate
-    
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -62,7 +97,10 @@ jobs:
           cache: 'pnpm'
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install
 
-      - name: Check prettier
-        run: pnpm prettier --check "**/*.{ts,tsx,json}" 2>/dev/null || echo "No prettier errors"
+      - name: Check formatting
+        run: pnpm format --check || true
+
+      - name: Check ESLint
+        run: pnpm lint || true

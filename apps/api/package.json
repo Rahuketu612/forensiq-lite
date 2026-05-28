@@ -9,6 +9,7 @@
     "start": "nest start",
     "start:prod": "node dist/main",
     "clean": "rm -rf dist tsconfig.tsbuildinfo",
+    "lint": "eslint \"src/**/*.ts\" --fix",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:studio": "prisma studio"

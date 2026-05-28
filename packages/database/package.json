@@ -12,6 +12,7 @@
     "dev": "tsc --watch",
     "build": "tsc",
     "clean": "rm -rf dist tsconfig.tsbuildinfo",
+    "lint": "eslint \"**/*.ts\" --fix",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
