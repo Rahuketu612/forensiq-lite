@@ -1,5 +1,4 @@
 // ForensiQ Lite - Prisma Database Schema
-// MVP Architecture - Simplified & Clean
 
 generator client {
   provider = "prisma-client-js"
@@ -9,10 +8,6 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
-
-// ============================================
-// ENUMS
-// ============================================
 
 enum UserRole {
   ADMIN
@@ -61,13 +56,9 @@ enum ImportStatus {
   PROCESSING
   COMPLETED
   FAILED
-  
-  // Mapping Status
-  NEEDS_MANUAL_MAPPING // Awaiting column mapping
-  MAPPING_CONFIRMED    // Mapping confirmed, ready for import
-  EXTRACTED_TEXT       // PDF text extracted, awaiting mapping
-  
-  // OCR Status
+  NEEDS_MANUAL_MAPPING
+  MAPPING_CONFIRMED
+  EXTRACTED_TEXT
   OCR_PENDING
   OCR_PROCESSING
   OCR_COMPLETED
@@ -81,19 +72,6 @@ enum RedFlagSeverity {
   CRITICAL
 }
 
-enum ReviewStatus {
-  PENDING
-  REVIEWED
-  DISMISSED
-}
-
-enum FeedbackType {
-  IMPORTANT
-  FALSE_POSITIVE
-  NEEDS_EVIDENCE
-  IGNORE
-}
-
 enum InvestigationStatus {
   OPEN
   UNDER_REVIEW
@@ -102,89 +80,121 @@ enum InvestigationStatus {
 }
 
 enum TimelineEventType {
-  // Red flag events
   FLAG_CREATED
   FLAG_REVIEWED
   FLAG_STATUS_CHANGED
   FLAG_FEEDBACK_ADDED
-  
-  // Investigation events
   NOTE_ADDED
   EVIDENCE_UPLOADED
   EVIDENCE_LINKED
   EVIDENCE_DELETED
-  
-  // Transaction events
   TRANSACTION_IMPORTED
   TRANSACTION_EXAMINED
+  FUND_TRAIL_GENERATED
+  TRANSACTION_LINK_CREATED
+  TRANSACTION_LINK_DELETED
 }
 
-// ============================================
-// MODELS
-// ============================================
+enum LinkReason {
+  SAME_AMOUNT
+  NEARBY_TIMESTAMP
+  SAME_COUNTERPARTY
+  NARRATION_SIMILARITY
+  SAME_MODE
+  SAME_TYPE
+  ROUND_AMOUNT
+  SUSPICIOUS_PATTERN
+}
+
+enum AuditAction {
+  CREATED
+  UPDATED
+  DELETED
+  READ
+  LINK_CREATED
+  LINK_DELETED
+  TRAIL_GENERATED
+  EXPORTED
+}
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String
-  password  String
-  role      UserRole @default(AUDITOR)
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Auth
+  id                  String    @id @default(uuid())
+  email               String    @unique
+  name                String
+  password            String
+  role                UserRole  @default(AUDITOR)
+  isActive            Boolean   @default(true)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
   passwordResetToken  String?
   passwordResetExpires DateTime?
-  lastLoginAt DateTime?
-  lastLoginIp String?
+  lastLoginAt         DateTime?
+  lastLoginIp         String?
 
-  // Relations
-  cases            Case[]            @relation("CreatedCases")
-  assignedCases    Case[]            @relation("AssignedCases")
-  redFlags         RedFlag[]
-  redFlagFeedbacks RedFlagFeedback[]
-  notes            InvestigationNote[]
-  evidenceFiles    EvidenceFile[]
-  transactionImports TransactionImport[]
-  timelines        InvestigationTimeline[]
+  casesCreated        Case[]                @relation("CreatedCases")
+  casesAssigned       Case[]                @relation("AssignedCases")
+  transactionImports  TransactionImport[]
+  
+  redFlagFeedbacks    RedFlagFeedback[]
+  investigationNotes  InvestigationNote[]
+  evidenceFiles       EvidenceFile[]
+  timelines           InvestigationTimeline[]
+  auditLogs           AuditLog[]
+  transactionLinksCreated TransactionLink[]   @relation("LinkCreator")
+  transactionLinksDeleted TransactionLink[]   @relation("LinkDeleter")
 
   @@index([email])
 }
 
+model AuditLog {
+  id            String      @id @default(uuid())
+  userId        String?
+  action        AuditAction
+  entityType    String
+  entityId      String
+  caseId        String?
+  metadata      Json?
+  ipAddress     String?
+  userAgent     String?
+  createdAt     DateTime    @default(now())
+
+  user          User?       @relation(fields: [userId], references: [id])
+
+  @@index([caseId])
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@index([createdAt])
+}
+
 model Case {
-  id          String     @id @default(cuid())
-  caseNumber  String     @unique
-  title       String
-  description String?
-  status      CaseStatus @default(DRAFT)
-  riskLevel   RiskLevel?
+  id              String     @id @default(uuid())
+  caseNumber      String     @unique
+  title           String
+  description     String?
+  status          CaseStatus @default(DRAFT)
+  riskLevel       RiskLevel?
+  clientName      String?
+  clientEmail     String?
+  clientPhone     String?
+  clientAddress   String?
+  assignedToId    String?
+  assignedAt      DateTime?
+  createdById     String
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  completedAt     DateTime?
 
-  // Client
-  clientName    String?
-  clientEmail   String?
-  clientPhone   String?
-  clientAddress String?
-
-  // Assignment
-  assignedToId String?
-  assignedTo   User?  @relation("AssignedCases", fields: [assignedToId], references: [id])
-  assignedAt   DateTime?
-
-  // Audit Trail
-  createdBy   User   @relation("CreatedCases", fields: [createdById], references: [id])
-  createdById String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  completedAt DateTime?
-
-  // Relations
-  transactions   TransactionImport[]
-  redFlags      RedFlag[]
-  redFlagRules  RedFlagRule[]
-  notes         InvestigationNote[]
-  evidenceFiles EvidenceFile[]
-  timelines     InvestigationTimeline[]
+  createdBy       User       @relation("CreatedCases", fields: [createdById], references: [id])
+  assignedTo      User?      @relation("AssignedCases", fields: [assignedToId], references: [id])
+  
+  transactionImports TransactionImport[]
+  transactions    Transaction[]
+  redFlagRules   RedFlagRule[]
+  redFlags       RedFlag[]
+  investigationNotes InvestigationNote[]
+  evidenceFiles  EvidenceFile[]
+  timelines      InvestigationTimeline[]
+  transactionLinks TransactionLink[]
 
   @@index([caseNumber])
   @@index([status])
@@ -192,82 +202,63 @@ model Case {
 }
 
 model TransactionImport {
-  id        String   @id @default(cuid())
-  caseId    String
-  case      Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  id               String       @id @default(uuid())
+  caseId           String
+  fileName         String
+  originalName     String
+  mimeType         String
+  importedById     String
+  importedAt       DateTime     @default(now())
+  status           ImportStatus @default(PENDING)
+  totalRows        Int          @default(0)
+  successRows      Int          @default(0)
+  failedRows       Int          @default(0)
+  errorLog         Json?
+  hasText          Boolean      @default(false)
+  extractedText    String?
+  isScanned        Boolean      @default(false)
+  ocrText          String?
+  ocrConfidence    Float?
+  ocrCompletedAt   DateTime?
+  mappingConfig    Json?
+  mappedBy         String?
+  mappedAt         DateTime?
 
-  // Import reference
-  fileName     String
-  originalName String
-  mimeType    String
-  importedBy   User   @relation(fields: [importedById], references: [id])
-  importedById String
-  importedAt   DateTime @default(now())
-
-  // Status
-  status      ImportStatus @default(PENDING)
-  totalRows   Int @default(0)
-  successRows Int @default(0)
-  failedRows  Int @default(0)
-  errorLog    Json?
-
-  // PDF/OCR Processing
-  hasText       Boolean @default(false)     // PDF has selectable text
-  extractedText String?                     // Raw extracted text from PDF
-  isScanned     Boolean @default(false)     // PDF is scanned (needs OCR)
-  
-  // OCR Results
-  ocrText        String?
-  ocrConfidence  Float?                     // 0-100 confidence score
-  ocrCompletedAt DateTime?
-
-  // Column Mapping Configuration
-  mappingConfig   Json?                     // Stores column mapping used for import
-  mappedBy        String?                    // User ID who confirmed mapping
-  mappedAt        DateTime?                  // When mapping was confirmed
-
-  // Relations
-  transactions Transaction[]
+  case             Case         @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  importedBy       User         @relation(fields: [importedById], references: [id])
+  transactions     Transaction[]
 
   @@index([caseId])
   @@index([status])
 }
 
 model Transaction {
-  id              String           @id @default(cuid())
+  id              String           @id @default(uuid())
   importId        String
-  import          TransactionImport @relation(fields: [importId], references: [id], onDelete: Cascade)
   caseId          String
+  date            DateTime
+  description     String?
+  amount          Float
+  type            TransactionType
+  balance         Float?
+  counterparty    String?
+  mode            TransactionMode  @default(OTHER)
+  referenceNumber String?
+  rowNumber       Int?
+  rawData         Json?
+  riskScore       Float            @default(0)
+  riskFactors     String[]         @default([])
+  createdAt       DateTime         @default(now())
 
-  // Core Data
-  date        DateTime
-  description String?      // Also known as: narration, particulars, details
-  amount      Float
-  type        TransactionType
-
-  // Balance
-  balance     Float?
-
-  // Categorization
-  counterparty   String?
-  mode           TransactionMode @default(OTHER)
-  referenceNumber String?  // Cheque number, UPI ID, reference, etc.
-
-  // Import tracking
-  rowNumber Int?
-  rawData   Json?          // Original raw data for traceability
-
-  // Risk (for MVP, simple risk tracking)
-  riskScore   Float    @default(0)
-  riskFactors String[] @default([])
-
-  createdAt DateTime @default(now())
-
-  // Relations
-  redFlags              RedFlag[]
-  investigationNotes    InvestigationNote[]
-  evidenceFiles         EvidenceFile[]
-  investigationTimelines InvestigationTimeline[]
+  import          TransactionImport @relation(fields: [importId], references: [id], onDelete: Cascade)
+  case            Case              @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  
+  redFlags        RedFlag[]
+  investigationNotes InvestigationNote[]
+  evidenceFiles   EvidenceFile[]
+  timelines       InvestigationTimeline[]
+  linksAsSource   TransactionLink[] @relation("SourceTransaction")
+  linksAsTarget   TransactionLink[] @relation("TargetTransaction")
 
   @@index([caseId])
   @@index([importId])
@@ -275,69 +266,90 @@ model Transaction {
   @@index([type])
 }
 
+model TransactionLink {
+  id                 String      @id @default(uuid())
+  caseId             String
+  sourceTransactionId String
+  targetTransactionId String
+  linkReason         LinkReason
+  confidenceScore    Float
+  
+  explanation        String
+
+  amountMatch        Boolean?
+  timestampMatch     Boolean?
+  counterpartyMatch  Boolean?
+  narrationMatch     Boolean?
+  
+  amountDifference   Float?
+  timeDifferenceMs   Int?
+  narrationSimilarity Float?
+  
+  createdById        String
+  createdAt          DateTime    @default(now())
+  deletedAt          DateTime?
+  deletedById        String?
+
+  case               Case        @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  sourceTransaction  Transaction @relation("SourceTransaction", fields: [sourceTransactionId], references: [id], onDelete: Cascade)
+  targetTransaction  Transaction @relation("TargetTransaction", fields: [targetTransactionId], references: [id], onDelete: Cascade)
+  createdBy          User        @relation("LinkCreator", fields: [createdById], references: [id])
+  deletedBy          User?       @relation("LinkDeleter", fields: [deletedById], references: [id])
+
+  @@index([caseId])
+  @@index([sourceTransactionId])
+  @@index([targetTransactionId])
+  @@index([linkReason])
+  @@index([confidenceScore])
+  @@index([createdAt])
+}
+
 model RedFlagRule {
-  id        String   @id @default(cuid())
-  caseId    String
-  case      Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  id            String     @id @default(uuid())
+  caseId        String
+  name          String
+  description   String
+  isActive      Boolean    @default(true)
+  priority      Int        @default(0)
+  parameters    Json?
+  conditionType String?
+  conditionValue String?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
 
-  name        String   // Rule name like "Large Transaction", "Structuring"
-  description String   // Rule description
-  isActive   Boolean  @default(true)
-  priority   Int      @default(0) // Higher = more important
-
-  // Rule parameters (stored as JSON for flexibility)
-  parameters Json?    // e.g., { "minAmount": 100000, "maxAmount": 500000 }
-
-  // Conditions
-  conditionType  String?  // AMOUNT, FREQUENCY, PATTERN, etc.
-  conditionValue String?  // Threshold value
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  redFlags RedFlag[]
+  case          Case       @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  redFlags      RedFlag[]
 
   @@index([caseId])
 }
 
 model RedFlag {
-  id        String   @id @default(cuid())
-  caseId    String
-  case      Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
-  ruleId    String?
-  rule      RedFlagRule? @relation(fields: [ruleId], references: [id])
-  ruleName  String   // Denormalized rule name for quick display
+  id           String             @id @default(uuid())
+  caseId       String
+  ruleId       String?
+  ruleName     String
   transactionId String
-  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  title        String
+  explanation  String
+  severity     RedFlagSeverity    @default(MEDIUM)
+  status       InvestigationStatus @default(OPEN)
+  reviewed     Boolean            @default(false)
+  reviewedBy   String?
+  reviewedAt   DateTime?
+  feedbackType String?
+  feedbackNote String?
+  feedbackById String?
+  feedbackAt   DateTime?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
 
-  // Flag details
-  title       String          // Short title for the flag
-  explanation String          // Explanation of why this was flagged
-  severity    RedFlagSeverity @default(MEDIUM)
-
-  // Investigation state
-  status          InvestigationStatus @default(OPEN)
-  reviewed        Boolean             @default(false)
-  reviewedBy      String?
-  reviewedAt      DateTime?
-
-  // Feedback
-  feedbackType  FeedbackType?
-  feedbackNote  String?
-  feedbackBy    User?   @relation(fields: [feedbackById], references: [id])
-  feedbackById  String?
-  feedbackAt    DateTime?
-
-  // Audit trail
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  evidenceFiles   EvidenceFile[]
-  feedbackHistory RedFlagFeedback[]
+  case         Case               @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  rule         RedFlagRule?       @relation(fields: [ruleId], references: [id])
+  transaction  Transaction        @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  feedbacks    RedFlagFeedback[]
   investigationNotes InvestigationNote[]
-  timeline        InvestigationTimeline[]
+  evidenceFiles EvidenceFile[]
+  timelines    InvestigationTimeline[]
 
   @@index([caseId])
   @@index([transactionId])
@@ -346,44 +358,35 @@ model RedFlag {
 }
 
 model RedFlagFeedback {
-  id        String   @id @default(cuid())
-  redFlagId String
-  redFlag   RedFlag  @relation(fields: [redFlagId], references: [id], onDelete: Cascade)
+  id         String   @id @default(uuid())
+  redFlagId  String
+  type       String
+  note       String?
+  userId     String
+  createdAt  DateTime @default(now())
 
-  type      FeedbackType
-  note      String?
-
-  // User tracking
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  createdAt DateTime @default(now())
+  redFlag    RedFlag  @relation(fields: [redFlagId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id])
 
   @@index([redFlagId])
   @@index([userId])
 }
 
 model InvestigationNote {
-  id        String   @id @default(cuid())
-  caseId    String
-  case      Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
-
-  // Content
-  title     String   // Note title
-  content   String   // Note content
-
-  // Author
-  authorId  String
-  author    User     @relation(fields: [authorId], references: [id])
-
-  // Optional links to related entities
+  id            String    @id @default(uuid())
+  caseId        String
+  title         String
+  content       String
+  authorId      String
   transactionId String?
-  transaction   Transaction? @relation(fields: [transactionId], references: [id], onDelete: SetNull)
-  
   redFlagId     String?
-  redFlag       RedFlag? @relation(fields: [redFlagId], references: [id], onDelete: SetNull)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  case          Case      @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  author        User      @relation(fields: [authorId], references: [id])
+  transaction   Transaction? @relation(fields: [transactionId], references: [id])
+  redFlag       RedFlag?  @relation(fields: [redFlagId], references: [id])
 
   @@index([caseId])
   @@index([authorId])
@@ -392,67 +395,47 @@ model InvestigationNote {
 }
 
 model EvidenceFile {
-  id        String   @id @default(cuid())
-  caseId    String
-  case      Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
-
-  // File info
-  fileName     String
-  originalName String
-  mimeType     String
-  size         Int      // File size in bytes
-  path         String   // Storage path
-
-  // Integrity hash (SHA256)
-  hash        String   // SHA256 hash for evidence integrity
-
-  // Description
-  description String?
-  category   String?   // DOCUMENT, SCREENSHOT, REPORT, etc.
-
-  // Linked to transaction or red flag (optional)
+  id            String    @id @default(uuid())
+  caseId        String
+  fileName      String
+  originalName  String
+  mimeType      String
+  size          Int
+  path          String
+  hash          String
+  description   String?
+  category      String?
   transactionId String?
-  transaction   Transaction? @relation(fields: [transactionId], references: [id], onDelete: SetNull)
-  
   redFlagId     String?
-  redFlag       RedFlag?  @relation(fields: [redFlagId], references: [id], onDelete: SetNull)
+  uploadedById  String
+  uploadedAt    DateTime  @default(now())
 
-  // Upload tracking
-  uploadedById String
-  uploadedBy   User     @relation(fields: [uploadedById], references: [id])
-  uploadedAt   DateTime @default(now())
+  case          Case      @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  transaction   Transaction? @relation(fields: [transactionId], references: [id])
+  redFlag       RedFlag?  @relation(fields: [redFlagId], references: [id])
+  uploadedBy    User      @relation(fields: [uploadedById], references: [id])
 
   @@index([caseId])
   @@index([transactionId])
   @@index([redFlagId])
 }
 
-// Investigation timeline for audit trail
 model InvestigationTimeline {
-  id        String   @id @default(cuid())
-  caseId    String
-  case      Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
-
-  // Reference to related entity
-  redFlagId     String?
-  redFlag       RedFlag? @relation(fields: [redFlagId], references: [id], onDelete: Cascade)
-
+  id           String             @id @default(uuid())
+  caseId       String
+  redFlagId    String?
   transactionId String?
-  transaction   Transaction? @relation(fields: [transactionId], references: [id], onDelete: SetNull)
+  eventType    TimelineEventType
+  title        String
+  description  String?
+  userId       String
+  metadata     Json?
+  createdAt    DateTime           @default(now())
 
-  // Timeline entry
-  eventType  TimelineEventType
-  title      String
-  description String?
-  
-  // User who performed the action
-  userId     String
-  user       User     @relation(fields: [userId], references: [id])
-
-  // Optional metadata (JSON)
-  metadata   Json?
-
-  createdAt DateTime @default(now())
+  case         Case               @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  redFlag      RedFlag?           @relation(fields: [redFlagId], references: [id])
+  transaction  Transaction?      @relation(fields: [transactionId], references: [id])
+  user         User               @relation(fields: [userId], references: [id])
 
   @@index([caseId])
   @@index([redFlagId])

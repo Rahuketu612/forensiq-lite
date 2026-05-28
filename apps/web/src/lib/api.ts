@@ -514,3 +514,55 @@ export interface ActivityEntry {
 }
 
 export default api;
+// Fund Trail
+export interface FundTrailLink {
+  id: string;
+  sourceTransaction: {
+    id: string;
+    date: string;
+    amount: number;
+    type: string;
+    counterparty: string | null;
+    description: string | null;
+  };
+  targetTransaction: {
+    id: string;
+    date: string;
+    amount: number;
+    type: string;
+    counterparty: string | null;
+    description: string | null;
+  };
+  linkReason: string;
+  confidenceScore: number;
+  explanation: string;
+  amountDifference: number | null;
+  timeDifferenceMs: number | null;
+  narrationSimilarity: number | null;
+  createdAt: string;
+}
+
+export interface FundTrailAuditEntry {
+  action: string;
+  timestamp: string;
+  details: string;
+}
+
+export interface FundTrailResult {
+  caseId: string;
+  transactionCount: number;
+  linksCreated: number;
+  links: FundTrailLink[];
+  auditTrail: FundTrailAuditEntry[];
+}
+
+export const fundTrailApi = {
+  getFundTrail: (caseId: string): Promise<FundTrailResult> =>
+    request<FundTrailResult>(`/cases/${caseId}/fund-trail`),
+
+  generateFundTrail: (caseId: string): Promise<FundTrailResult> =>
+    request<FundTrailResult>(`/cases/${caseId}/fund-trail/generate`, { method: 'POST' }),
+
+  deleteLink: (caseId: string, linkId: string): Promise<void> =>
+    request<void>(`/cases/${caseId}/fund-trail/links/${linkId}`, { method: 'DELETE' }),
+};
