@@ -6,7 +6,7 @@ import { randomBytes } from 'crypto';
 import { prisma } from '@forensiq/database';
 import { UserRole } from '@forensiq/database';
 import type { User } from '@forensiq/database';
-import type { RegisterDto, LoginDto } from '../dto';
+import type { RegisterDto, LoginDto } from './dto';
 
 export interface JwtPayload {
   sub: string;

@@ -371,7 +371,7 @@ export class ReportService {
         low: flags.filter(f => f.severity === RedFlagSeverity.LOW).length,
       },
       byCategory: flags.reduce((acc, f) => {
-        acc[f.flagType] = (acc[f.flagType] || 0) + 1;
+        acc[f.title] = (acc[f.title] || 0) + 1;
         return acc;
       }, {} as Record<string, number>),
       reviewed: {
@@ -409,9 +409,9 @@ export class ReportService {
       .slice(0, 20)
       .map(f => ({
         id: f.id,
-        flagType: f.flagType,
+        flagType: f.title,
         severity: f.severity,
-        description: f.description,
+        description: f.explanation,
         flaggedTransactionId: f.transactionId || undefined,
         date: f.transaction?.date?.toISOString() || f.createdAt.toISOString(),
       }));
@@ -439,19 +439,19 @@ export class ReportService {
    * Get evidence files
    */
   private async getEvidenceFiles(caseId: string): Promise<EvidenceFileDto[]> {
-    const evidence = await prisma.evidence.findMany({
+    const evidence = await prisma.evidenceFile.findMany({
       where: { caseId },
       orderBy: { uploadedAt: 'desc' },
     });
 
-    return evidence.map(e => ({
+    return evidence.map((e: { id: string; fileName: string; mimeType: string; size: number; hash: string; uploadedAt: Date; uploadedById: string; description: string | null }) => ({
       id: e.id,
       fileName: e.fileName,
       mimeType: e.mimeType,
-      fileSize: e.fileSize,
-      sha256Hash: e.sha256Hash,
+      fileSize: e.size,
+      sha256Hash: e.hash,
       uploadedAt: e.uploadedAt.toISOString(),
-      uploadedBy: e.uploadedBy || undefined,
+      uploadedBy: e.uploadedById || undefined,
       description: e.description || undefined,
     }));
   }
@@ -502,7 +502,7 @@ export class ReportService {
         events.push({
           date: flag.createdAt.toISOString(),
           eventType: 'Red Flag',
-          description: `Flagged: ${flag.flagType} (${flag.severity})`,
+          description: `Flagged: ${flag.title} (${flag.severity})`,
         });
       });
     }

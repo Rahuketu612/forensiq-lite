@@ -143,9 +143,11 @@ model User {
   cases            Case[]            @relation("CreatedCases")
   assignedCases    Case[]            @relation("AssignedCases")
   redFlags         RedFlag[]
-  redFlagFeedback  RedFlagFeedback[]
+  redFlagFeedbacks RedFlagFeedback[]
   notes            InvestigationNote[]
   evidenceFiles    EvidenceFile[]
+  transactionImports TransactionImport[]
+  timelines        InvestigationTimeline[]
 
   @@index([email])
 }
@@ -182,6 +184,7 @@ model Case {
   redFlagRules  RedFlagRule[]
   notes         InvestigationNote[]
   evidenceFiles EvidenceFile[]
+  timelines     InvestigationTimeline[]
 
   @@index([caseNumber])
   @@index([status])
@@ -261,7 +264,10 @@ model Transaction {
   createdAt DateTime @default(now())
 
   // Relations
-  redFlags RedFlag[]
+  redFlags              RedFlag[]
+  investigationNotes    InvestigationNote[]
+  evidenceFiles         EvidenceFile[]
+  investigationTimelines InvestigationTimeline[]
 
   @@index([caseId])
   @@index([importId])

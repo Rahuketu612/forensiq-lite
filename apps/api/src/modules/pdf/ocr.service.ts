@@ -33,7 +33,8 @@ export class OcrService {
       
       // Set up progress callback
       if (onProgress) {
-        worker.on('progress', (progress: { status: string; progress: number }) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (worker as any).on('progress', (progress: { status: string; progress: number }) => {
           onProgress({
             status: progress.status,
             progress: Math.round(progress.progress * 100),
@@ -89,7 +90,8 @@ export class OcrService {
       let pagesProcessed = 0;
       
       if (onProgress) {
-        worker.on('progress', (progress: { status: string; progress: number }) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (worker as any).on('progress', (progress: { status: string; progress: number }) => {
           onProgress({
             status: `Processing page ${pagesProcessed + 1}: ${progress.status}`,
             progress: Math.round(progress.progress * 100),

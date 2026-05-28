@@ -208,7 +208,7 @@ export class InvestigationController {
     @Query('eventType') eventType?: string,
     @Query('page') page?: number,
     @Query('limit') limit?: number,
-  ) {
+  ): Promise<{ entries: any[]; total: number; page: number; limit: number; totalPages: number }> {
     return this.investigationService.getTimeline(caseId, {
       redFlagId,
       transactionId,
@@ -226,7 +226,7 @@ export class InvestigationController {
   @ApiOperation({ summary: 'Get red flag with investigation details' })
   @ApiParam({ name: 'caseId', description: 'Case ID' })
   @ApiParam({ name: 'flagId', description: 'Red Flag ID' })
-  async getRedFlagDetails(@Param('flagId') flagId: string) {
+  async getRedFlagDetails(@Param('flagId') flagId: string): Promise<any> {
     return this.investigationService.getRedFlagDetails(flagId);
   }
 

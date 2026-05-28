@@ -67,10 +67,12 @@ export class ReportController {
     // Try PDF generation with puppeteer
     try {
       // Import puppeteer only if available
-      const puppeteer = await import('puppeteer').catch(() => null);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const puppeteerModule = await import('puppeteer').catch(() => null) as any;
       
-      if (puppeteer) {
+      if (puppeteerModule?.default || puppeteerModule) {
         const html = await this.reportService.generateHtmlReport(caseId, userId, options);
+        const puppeteer = puppeteerModule.default || puppeteerModule;
         const browser = await puppeteer.launch({ headless: true });
         const page = await browser.newPage();
         await page.setContent(html, { waitUntil: 'networkidle0' });

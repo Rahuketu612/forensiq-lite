@@ -271,11 +271,11 @@ export class InvestigationService {
 
     // Create timeline entry
     await this.addTimelineEntry(caseId, userId, {
-      eventType: TimelineEventType.EVIDENCE_REMOVED,
+      eventType: TimelineEventType.EVIDENCE_DELETED,
       title: 'Evidence removed',
       description: `File: ${evidence.originalName}`,
-      redFlagId: evidence.redFlagId,
-      transactionId: evidence.transactionId,
+      redFlagId: evidence.redFlagId ?? undefined,
+      transactionId: evidence.transactionId ?? undefined,
       metadata: { evidenceId },
     });
 
@@ -300,7 +300,7 @@ export class InvestigationService {
       transactionId?: string;
       metadata?: Record<string, any>;
     }
-  ) {
+  ): Promise<any> {
     return prisma.investigationTimeline.create({
       data: {
         caseId,
@@ -327,7 +327,7 @@ export class InvestigationService {
       page?: number;
       limit?: number;
     } = {}
-  ) {
+  ): Promise<{ entries: any[]; total: number; page: number; limit: number; totalPages: number }> {
     const { redFlagId, transactionId, eventType, page = 1, limit = 50 } = options;
 
     const where: any = { caseId };
@@ -401,7 +401,7 @@ export class InvestigationService {
   /**
    * Get red flag with investigation details
    */
-  async getRedFlagDetails(flagId: string) {
+  async getRedFlagDetails(flagId: string): Promise<any> {
     const flag = await prisma.redFlag.findUnique({
       where: { id: flagId },
       include: {

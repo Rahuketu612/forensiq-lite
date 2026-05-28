@@ -105,8 +105,8 @@ export class MappingService {
         totalRows: parseResult.rows.length,
         successRows,
         failedRows,
-        errorLog: errors.length > 0 ? errors : undefined,
-        mappingConfig: dto.columns,
+        errorLog: errors.length > 0 ? JSON.parse(JSON.stringify(errors)) : undefined,
+        mappingConfig: JSON.parse(JSON.stringify(dto.columns)),
         mappedBy: userId,
         mappedAt: new Date(),
       },
@@ -341,10 +341,10 @@ export class MappingService {
             type: transactionData.type,
             balance: transactionData.balance,
             counterparty: transactionData.counterparty,
-            mode: transactionData.mode,
+            mode: transactionData.mode as any,
             referenceNumber: transactionData.referenceNumber,
             rowNumber: row.rowNumber,
-            rawData: row.rawData,
+            rawData: JSON.parse(JSON.stringify(row.rawData)),
           },
         });
 

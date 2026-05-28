@@ -101,7 +101,7 @@ export class TransactionsService {
           totalRows: parseResult.transactions.length + parseResult.errors.length,
           successRows: successCount,
           failedRows: failedCount,
-          errorLog: parseResult.errors.length > 0 ? parseResult.errors : undefined,
+          errorLog: parseResult.errors.length > 0 ? JSON.parse(JSON.stringify(parseResult.errors)) : undefined,
         },
       });
 
@@ -250,7 +250,7 @@ export class TransactionsService {
   /**
    * Get transaction imports for a case
    */
-  async getImports(caseId: string) {
+  async getImports(caseId: string): Promise<any[]> {
     return prisma.transactionImport.findMany({
       where: { caseId },
       orderBy: { importedAt: 'desc' },
@@ -268,14 +268,11 @@ export class TransactionsService {
   /**
    * Get single transaction by ID
    */
-  async getTransaction(id: string) {
+  async getTransaction(id: string): Promise<any> {
     const transaction = await prisma.transaction.findUnique({
       where: { id },
       include: {
         import: true,
-        case: {
-          select: { id: true, caseNumber: true, title: true },
-        },
       },
     });
 
@@ -303,8 +300,8 @@ interface TransactionFilters {
 interface TransactionWhere {
   caseId: string;
   date?: { gte?: Date; lte?: Date };
-  type?: string;
-  mode?: string;
+  type?: 'CREDIT' | 'DEBIT' | 'TRANSFER' | 'REFUND' | 'FEE' | 'OTHER';
+  mode?: 'CASH' | 'CHEQUE' | 'NEFT' | 'RTGS' | 'UPI' | 'OTHER';
   OR?: Array<{ description?: { contains: string; mode: 'insensitive' }; counterparty?: { contains: string; mode: 'insensitive' } }>;
   amount?: { gte?: number; lte?: number };
 }

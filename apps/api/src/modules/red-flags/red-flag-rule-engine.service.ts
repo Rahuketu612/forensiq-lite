@@ -402,6 +402,7 @@ export class RedFlagRuleEngine {
               caseId,
               ruleId: flag.ruleId,
               ruleName: flag.ruleName,
+              title: flag.ruleName, // Use ruleName as title
               transactionId: flag.transactionId,
               explanation: flag.explanation,
               severity: flag.severity,

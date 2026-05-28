@@ -58,7 +58,7 @@ export class MappingController {
   async getMappingStatus(
     @Param('caseId') caseId: string,
     @Param('importId') importId: string,
-  ) {
+  ): Promise<any> {
     const { prisma } = await import('@forensiq/database');
     const transactionImport = await prisma.transactionImport.findFirst({
       where: { id: importId, caseId },

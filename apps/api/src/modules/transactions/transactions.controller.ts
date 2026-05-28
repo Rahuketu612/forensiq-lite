@@ -34,7 +34,7 @@ export class TransactionsController {
       })
     ) file: Express.Multer.File,
     @CurrentUser() user: CurrentUserData,
-  ) {
+  ): Promise<any> {
     return this.transactionsService.importTransactions(caseId, file, user.id);
   }
 
@@ -52,7 +52,7 @@ export class TransactionsController {
     @Query('search') search?: string,
     @Query('minAmount') minAmount?: string,
     @Query('maxAmount') maxAmount?: string,
-  ) {
+  ): Promise<any> {
     return this.transactionsService.getTransactions(caseId, {
       page,
       limit,
@@ -69,14 +69,14 @@ export class TransactionsController {
   @Get('transactions/stats')
   @ApiOperation({ summary: 'Get transaction statistics for a case' })
   @ApiParam({ name: 'caseId', description: 'Case ID' })
-  async getStats(@Param('caseId') caseId: string) {
+  async getStats(@Param('caseId') caseId: string): Promise<any> {
     return this.transactionsService.getStats(caseId);
   }
 
   @Get('imports')
   @ApiOperation({ summary: 'Get import history for a case' })
   @ApiParam({ name: 'caseId', description: 'Case ID' })
-  async getImports(@Param('caseId') caseId: string) {
+  async getImports(@Param('caseId') caseId: string): Promise<any[]> {
     return this.transactionsService.getImports(caseId);
   }
 
@@ -87,7 +87,7 @@ export class TransactionsController {
   async getTransaction(
     @Param('caseId') caseId: string,
     @Param('transactionId') transactionId: string,
-  ) {
+  ): Promise<any> {
     const transaction = await this.transactionsService.getTransaction(transactionId);
     if (transaction.caseId !== caseId) {
       throw new NotFoundException('Transaction not found in this case');

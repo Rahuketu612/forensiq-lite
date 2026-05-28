@@ -2,11 +2,11 @@
   "name": "@forensiq/api",
   "version": "0.1.0",
   "private": true,
-  "type": "module",
   "scripts": {
     "dev": "nest start --watch",
-    "build": "nest build",
+    "build": "tsc -p tsconfig.build.json",
     "start": "nest start",
+    "start:dev": "node dist/main",
     "start:prod": "node dist/main",
     "clean": "rm -rf dist tsconfig.tsbuildinfo",
     "lint": "eslint \"src/**/*.ts\" --fix",

@@ -109,7 +109,7 @@ export class CasesService {
         _count: {
           select: {
             transactions: true,
-            flags: true,
+            redFlags: true,
           },
         },
       },
@@ -262,6 +262,8 @@ export class CasesService {
         updatedAt: true,
         lastLoginAt: true,
         lastLoginIp: true,
+        passwordResetToken: true,
+        passwordResetExpires: true,
       },
     });
 
