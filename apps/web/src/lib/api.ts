@@ -205,6 +205,10 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+
+  // Dashboard
+  getDashboard: (caseId: string) =>
+    request<CaseDashboard>(`/cases/${caseId}/dashboard`),
 };
 
 export interface User {
@@ -470,6 +474,43 @@ export interface InvestigationFilters {
   transactionId?: string;
   redFlagId?: string;
   authorId?: string;
+}
+
+// Dashboard
+export interface CaseDashboard {
+  caseId: string;
+  caseData: {
+    id: string;
+    title: string;
+    status: string;
+    createdAt: string;
+    updatedAt: string;
+  };
+  statistics: {
+    totalTransactions: number;
+    totalImports: number;
+    totalRedFlags: number;
+    highSeverityFlags: number;
+    reviewedFlags: number;
+    unreviewedFlags: number;
+    evidenceFilesCount: number;
+    investigationNotesCount: number;
+    latestActivity: string | null;
+  };
+  progress: {
+    redFlagsReviewedPercent: number;
+  };
+  recentActivity: ActivityEntry[];
+}
+
+export interface ActivityEntry {
+  id: string;
+  eventType: string;
+  title: string;
+  description: string | null;
+  user: { id: string; name: string; email: string } | null;
+  createdAt: string;
+  entityType?: string;
 }
 
 export default api;
