@@ -15,7 +15,7 @@ import { JwtAuthGuard } from '../auth/guards';
 
 @ApiTags('Report')
 @ApiBearerAuth()
-@Controller('v1/cases/:caseId/report')
+@Controller('cases/:caseId/report')
 @UseGuards(JwtAuthGuard)
 export class ReportController {
   constructor(private readonly reportService: ReportService) {}

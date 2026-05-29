@@ -19,7 +19,7 @@
     "db:seed": "ts-node --esm src/seed.ts"
   },
   "dependencies": {
-    "@prisma/client": "^5.14.0"
+    "@prisma/client": "^5.22.0"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",

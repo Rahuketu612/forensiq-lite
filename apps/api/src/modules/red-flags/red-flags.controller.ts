@@ -6,7 +6,7 @@ import { CurrentUser, CurrentUserData } from '../../common/decorators/current-us
 
 @ApiTags('Red Flags')
 @ApiBearerAuth()
-@Controller('v1/cases/:caseId')
+@Controller('cases/:caseId')
 @UseGuards(JwtAuthGuard)
 export class RedFlagsController {
   constructor(private readonly ruleEngine: RedFlagRuleEngine) {}

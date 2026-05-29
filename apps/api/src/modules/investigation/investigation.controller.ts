@@ -10,7 +10,7 @@ import { InvestigationStatus } from '@forensiq/database';
 
 @ApiTags('Investigation')
 @ApiBearerAuth()
-@Controller('v1/cases/:caseId')
+@Controller('cases/:caseId')
 @UseGuards(JwtAuthGuard)
 export class InvestigationController {
   constructor(

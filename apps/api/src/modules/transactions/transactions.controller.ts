@@ -17,7 +17,7 @@ import { CurrentUser, CurrentUserData } from '../../common/decorators/current-us
 
 @ApiTags('Transactions')
 @ApiBearerAuth()
-@Controller('v1/cases/:caseId')
+@Controller('cases/:caseId')
 export class TransactionsController {
   constructor(private readonly transactionsService: TransactionsService) {}
 

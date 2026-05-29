@@ -15,7 +15,7 @@ import { ConfirmMappingDto } from './mapping.dto';
 
 @ApiTags('Mapping')
 @ApiBearerAuth()
-@Controller('v1/cases/:caseId/imports')
+@Controller('cases/:caseId/imports')
 @UseGuards(JwtAuthGuard)
 export class MappingController {
   constructor(private readonly mappingService: MappingService) {}

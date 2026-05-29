@@ -20,7 +20,7 @@ import { ImportStatus } from '@forensiq/database';
 
 @ApiTags('PDF')
 @ApiBearerAuth()
-@Controller('v1/cases/:caseId/imports')
+@Controller('cases/:caseId/imports')
 @UseGuards(JwtAuthGuard)
 export class PdfController {
   constructor(

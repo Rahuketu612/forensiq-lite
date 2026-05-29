@@ -1,1 +1,1 @@
-export { AuthProvider, useAuth, useRequireAuth, getToken } from './auth-context';
+export { AuthProvider, useAuth, useRequireAuth, getToken, isDevBypass } from './auth-context';

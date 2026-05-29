@@ -33,7 +33,7 @@ import { UserRole } from '@forensiq/database';
 
 @ApiTags('Cases')
 @ApiBearerAuth()
-@Controller('v1/cases')
+@Controller('cases')
 export class CasesController {
   constructor(private readonly casesService: CasesService) {}
 

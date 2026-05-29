@@ -7,7 +7,7 @@ const API_VERSION = process.env.NEXT_PUBLIC_API_VERSION || 'v1';
 
 function getAuthHeaders(): HeadersInit {
   if (typeof window === 'undefined') return {};
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem('forensiq_token');
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
@@ -80,7 +80,7 @@ export const api = {
   importTransactions: async (caseId: string, file: File): Promise<ImportResult> => {
     const formData = new FormData();
     formData.append('file', file);
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('forensiq_token');
     const response = await fetch(buildUrl(`/cases/${caseId}/import`), {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },

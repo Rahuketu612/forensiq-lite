@@ -135,6 +135,23 @@ That's it! The app will be running at:
 - Backend API: http://localhost:3001
 - API Docs: http://localhost:3001/docs
 
+### Dev Mode (Skip Login)
+
+For faster local development, enable the dev auth bypass:
+
+```bash
+# In .env file
+DEV_AUTH_BYPASS=true
+```
+
+With this enabled:
+- Login page is skipped
+- Dashboard opens directly at http://localhost:3000
+- Demo auditor user is used automatically
+- A "DEV MODE" badge appears in the bottom-right corner
+
+⚠️ **Never enable in production!** Keep `DEV_AUTH_BYPASS=false` for production builds.
+
 ### Manual Setup
 
 If you prefer to set up manually:
