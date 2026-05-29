@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts';
@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, AlertTriangle, AlertCircle, AlertOctagon, CheckCircle } from 'lucide-react';
 
-const severityConfig = {
+const severityConfig: Record<string, { color: string; icon: React.ComponentType<any> }> = {
   HIGH: { color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200', icon: AlertOctagon },
   CRITICAL: { color: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200', icon: AlertCircle },
   MEDIUM: { color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200', icon: AlertTriangle },

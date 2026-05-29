@@ -81,13 +81,6 @@ export default function CaseDetailPage() {
     CLOSED: 'bg-green-100 text-green-800',
   };
 
-  const riskColors: Record<string, string> = {
-    LOW: 'bg-green-100 text-green-800',
-    MEDIUM: 'bg-yellow-100 text-yellow-800',
-    HIGH: 'bg-orange-100 text-orange-800',
-    CRITICAL: 'bg-red-100 text-red-800',
-  };
-
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -101,11 +94,6 @@ export default function CaseDetailPage() {
             <Badge className={statusColors[caseData.status] || 'bg-gray-100'}>
               {caseData.status.replace('_', ' ')}
             </Badge>
-            {caseData.riskLevel && (
-              <Badge className={riskColors[caseData.riskLevel] || 'bg-gray-100'}>
-                {caseData.riskLevel}
-              </Badge>
-            )}
           </div>
         </div>
       </header>
@@ -180,6 +168,20 @@ export default function CaseDetailPage() {
                       <div>
                         <h3 className="font-semibold">Report</h3>
                         <p className="text-sm text-muted-foreground">Generate audit reports</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+
+              <Link href={`/cases/${caseId}/entities`}>
+                <Card className="hover:border-primary transition-colors cursor-pointer">
+                  <CardContent className="pt-6">
+                    <div className="flex items-center gap-3">
+                      <Activity className="h-8 w-8 text-purple-500" />
+                      <div>
+                        <h3 className="font-semibold">Entity Analysis</h3>
+                        <p className="text-sm text-muted-foreground">Entity resolution and clustering</p>
                       </div>
                     </div>
                   </CardContent>

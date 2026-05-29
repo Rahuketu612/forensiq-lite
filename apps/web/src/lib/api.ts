@@ -151,11 +151,12 @@ export const api = {
     if (metadata.transactionId) formData.append('transactionId', metadata.transactionId);
     if (metadata.redFlagId) formData.append('redFlagId', metadata.redFlagId);
     
+    const token = typeof window !== 'undefined' ? localStorage.getItem('forensiq_token') : null;
     return fetch(`${API_BASE_URL}/cases/${caseId}/evidence/upload`, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${getToken()}` },
+      headers: { Authorization: `Bearer ${token || ''}` },
       body: formData,
-    }).then(handleResponse);
+    }).then((res) => res.json());
   },
 
   getEvidence: (caseId: string, filters?: { transactionId?: string; redFlagId?: string }) => {
@@ -176,7 +177,7 @@ export const api = {
     `${API_BASE_URL}/cases/${caseId}/evidence/${evidenceId}/download`,
 
   deleteEvidence: (caseId: string, evidenceId: string) =>
-    request(`${casesUrl(caseId)}/evidence/${evidenceId}`, { method: 'DELETE' }),
+    request(`/cases/${caseId}/evidence/${evidenceId}`, { method: 'DELETE' }),
 
   // Investigation - Timeline
   getTimeline: (caseId: string, filters?: { redFlagId?: string; transactionId?: string }) => {
@@ -209,6 +210,29 @@ export const api = {
   // Dashboard
   getDashboard: (caseId: string) =>
     request<CaseDashboard>(`/cases/${caseId}/dashboard`),
+
+  // Entity Resolution
+  analyzeEntities: (caseId: string, force?: boolean) =>
+    request<EntityAnalyzeResult>(`/cases/${caseId}/entities/analyze`, {
+      method: 'POST',
+      body: JSON.stringify({ force }),
+    }),
+
+  getEntities: (caseId: string, includeReviewed?: boolean) => {
+    const params = new URLSearchParams();
+    if (includeReviewed !== undefined) params.set('includeReviewed', String(includeReviewed));
+    const query = params.toString() ? '?' + params.toString() : '';
+    return request<EntityList>(`/cases/${caseId}/entities${query}`);
+  },
+
+  getEntity: (caseId: string, entityId: string) =>
+    request<Entity>(`/cases/${caseId}/entities/${entityId}`),
+
+  reviewEntity: (caseId: string, entityId: string, reviewedBy?: string) =>
+    request<Entity>(`/cases/${caseId}/entities/${entityId}/review`, {
+      method: 'POST',
+      body: JSON.stringify({ reviewedBy }),
+    }),
 };
 
 export interface User {
@@ -554,6 +578,64 @@ export interface FundTrailResult {
   linksCreated: number;
   links: FundTrailLink[];
   auditTrail: FundTrailAuditEntry[];
+}
+
+// Entity Resolution
+export interface EntityAlias {
+  id: string;
+  aliasName: string;
+  matchType: string;
+  source?: string;
+  confidenceScore: number;
+  matchReason?: string;
+  createdAt: string;
+}
+
+export interface EntityTransaction {
+  id: string;
+  date: string;
+  amount: number;
+  type: string;
+  counterparty?: string;
+  description?: string;
+}
+
+export interface EntityAuditLog {
+  id: string;
+  action: string;
+  description: string;
+  confidenceScore?: number;
+  createdAt: string;
+}
+
+export interface Entity {
+  id: string;
+  caseId: string;
+  canonicalName: string;
+  riskScore: number;
+  totalAmount: number;
+  transactionCount: number;
+  reviewed: boolean;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  explanation?: string;
+  createdAt: string;
+  aliases: EntityAlias[];
+  transactions?: EntityTransaction[];
+  auditLogs?: EntityAuditLog[];
+}
+
+export interface EntityAnalyzeResult {
+  totalEntities: number;
+  totalTransactions: number;
+  created: number;
+  updated: number;
+  entities: Entity[];
+}
+
+export interface EntityList {
+  entities: Entity[];
+  total: number;
 }
 
 // Fund Trail Patterns

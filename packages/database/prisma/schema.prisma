@@ -211,6 +211,7 @@ model Case {
   timelines      InvestigationTimeline[]
   transactionLinks TransactionLink[]
   fundTrailPatterns FundTrailPattern[]
+  entities       Entity[]
 
   @@index([caseNumber])
   @@index([status])
@@ -264,6 +265,15 @@ model Transaction {
   rawData         Json?
   riskScore       Float            @default(0)
   riskFactors     String[]         @default([])
+  
+  // Additional entity resolution fields stored in rawData
+  gstin           String?
+  pan             String?
+  bankAccount     String?
+  ifsc            String?
+  upiId           String?
+  phone           String?
+  
   createdAt       DateTime         @default(now())
 
   import          TransactionImport @relation(fields: [importId], references: [id], onDelete: Cascade)
@@ -275,6 +285,8 @@ model Transaction {
   timelines       InvestigationTimeline[]
   linksAsSource   TransactionLink[] @relation("SourceTransaction")
   linksAsTarget   TransactionLink[] @relation("TargetTransaction")
+  entityLinks     TransactionEntity[]
+  entityAliases   EntityAlias[]
 
   @@index([caseId])
   @@index([importId])
@@ -496,5 +508,121 @@ model FundTrailPattern {
   @@index([patternType])
   @@index([status])
   @@index([reviewed])
+  @@index([createdAt])
+}
+
+// Entity Resolution Models
+// Explains how counterparties are matched and clustered
+
+enum MatchType {
+  EXACT_NAME
+  NORMALIZED_NAME
+  GSTIN
+  PAN
+  BANK_ACCOUNT
+  IFSC
+  UPI_ID
+  PHONE
+}
+
+model Entity {
+  id              String    @id @default(uuid())
+  caseId          String
+  canonicalName   String    // The canonical/primary name for this entity
+  riskScore       Float     @default(0)
+  totalAmount     Float     @default(0)
+  transactionCount Int      @default(0)
+  reviewed        Boolean   @default(false)
+  reviewedBy      String?
+  reviewedAt      DateTime?
+  explanation     String?   // Human-readable explanation of entity resolution
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  case            Case            @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  aliases         EntityAlias[]
+  transactions    TransactionEntity[]
+  auditLogs       EntityAuditLog[]
+
+  @@index([caseId])
+  @@index([canonicalName])
+  @@index([riskScore])
+  @@index([reviewed])
+  @@index([createdAt])
+}
+
+model EntityAlias {
+  id              String    @id @default(uuid())
+  entityId        String
+  aliasName       String    // The alternative name/identifier
+  matchType       MatchType // How this alias was matched
+  source          String?   // Source of the alias (e.g., "counterparty", "beneficiary")
+  confidenceScore Float     // Confidence of the match (0-1)
+  matchReason     String?   // Human-readable reason for the match
+  transactionId   String?   // Which transaction introduced this alias
+  createdAt       DateTime  @default(now())
+
+  entity          Entity            @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  transaction     Transaction?      @relation(fields: [transactionId], references: [id])
+  auditLogs       EntityAliasAuditLog[]
+
+  @@index([entityId])
+  @@index([aliasName])
+  @@index([matchType])
+  @@index([confidenceScore])
+}
+
+// Junction table for Transaction-Entity many-to-many relationship
+model TransactionEntity {
+  id              String    @id @default(uuid())
+  transactionId   String
+  entityId        String
+  role            String    @default("counterparty") // counterparty, beneficiary, sender, receiver
+  matchScore      Float     @default(1.0)
+  createdAt       DateTime  @default(now())
+
+  transaction     Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  entity          Entity      @relation(fields: [entityId], references: [id], onDelete: Cascade)
+
+  @@unique([transactionId, entityId, role])
+  @@index([transactionId])
+  @@index([entityId])
+}
+
+// Entity resolution audit log - tracks all decisions made by the algorithm
+model EntityAuditLog {
+  id              String    @id @default(uuid())
+  entityId        String
+  action          String    // ANALYZE, CREATE, MERGE, SPLIT, UPDATE, REVIEW
+  description     String    // Human-readable description of the action
+  confidenceScore Float?
+  matchDetails    Json?     // Details about how entities were matched
+  affectedAliases Json?     // List of affected alias IDs
+  previousState   Json?     // State before the action
+  newState        Json?     // State after the action
+  triggeredBy     String?   // "system" or userId
+  createdAt       DateTime  @default(now())
+
+  entity          Entity    @relation(fields: [entityId], references: [id], onDelete: Cascade)
+
+  @@index([entityId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+// Individual alias audit log
+model EntityAliasAuditLog {
+  id              String    @id @default(uuid())
+  aliasId         String
+  action          String    // ADDED, REMOVED, MERGED, UPDATED
+  description     String
+  previousEntityId String?
+  newEntityId     String?
+  reason          String?
+  createdAt       DateTime  @default(now())
+
+  alias           EntityAlias @relation(fields: [aliasId], references: [id], onDelete: Cascade)
+
+  @@index([aliasId])
   @@index([createdAt])
 }

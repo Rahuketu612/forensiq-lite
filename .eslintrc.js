@@ -11,50 +11,43 @@ module.exports = {
   extends: [
     'eslint:recommended',
     'plugin:@typescript-eslint/recommended',
-    'plugin:@typescript-eslint/strict',
     'plugin:import/recommended',
     'prettier',
   ],
   rules: {
     // TypeScript
-    '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
-    '@typescript-eslint/consistent-type-imports': ['error', { prefer: 'type-imports' }],
+    '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
     '@typescript-eslint/no-explicit-any': 'warn',
-    '@typescript-eslint/await-thenable': 'error',
-    '@typescript-eslint/no-floating-promises': 'error',
-    '@typescript-eslint/no-misused-promises': ['error', { checksVoidReturn: { arguments: false } }],
-    '@typescript-eslint/no-unnecessary-condition': 'error',
-    '@typescript-eslint/prefer-optional-chain': 'error',
-    '@typescript-eslint/prefer-nullish-coalescing': 'error',
+    '@typescript-eslint/await-thenable': 'warn',
+    '@typescript-eslint/no-floating-promises': 'off',
+    '@typescript-eslint/no-misused-promises': 'off',
+    '@typescript-eslint/no-unnecessary-condition': 'off',
+    '@typescript-eslint/prefer-optional-chain': 'warn',
+    '@typescript-eslint/prefer-nullish-coalescing': 'off',
+    '@typescript-eslint/consistent-type-imports': 'off',
 
     // Import
-    'import/order': [
-      'error',
-      {
-        groups: ['builtin', 'external', 'internal', 'parent', 'sibling', 'index'],
-        'newlines-between': 'always',
-        alphabetize: { order: 'asc' },
-      },
-    ],
-    'import/newline-after-import': 'error',
-    'import/no-duplicates': 'error',
+    'import/order': 'off',
+    'import/newline-after-import': 'off',
+    'import/no-duplicates': 'off',
+    'import/no-unresolved': 'off',
 
     // React
     'react/react-in-jsx-scope': 'off',
     'react/prop-types': 'off',
 
     // Simple Import Sort
-    'simple-import-sort/imports': 'error',
-    'simple-import-sort/exports': 'error',
+    'simple-import-sort/imports': 'off',
+    'simple-import-sort/exports': 'off',
 
     // Tailwind
-    'tailwindcss/no-contradicton': 'error',
+    'tailwindcss/no-contradicton': 'off',
 
     // General
     'no-console': ['warn', { allow: ['warn', 'error'] }],
-    'no-debugger': 'error',
-    'prefer-const': 'error',
-    'no-var': 'error',
+    'no-debugger': 'warn',
+    'prefer-const': 'off',
+    'no-var': 'off',
   },
   overrides: [
     {

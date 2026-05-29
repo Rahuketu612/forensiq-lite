@@ -25,6 +25,8 @@
     "typecheck": "pnpm -r typecheck"
   },
   "devDependencies": {
+    "eslint-plugin-simple-import-sort": "^13.0.0",
+    "eslint-plugin-tailwindcss": "^3.18.3",
     "prettier": "^3.2.5",
     "tsx": "^4.11.0",
     "typescript": "^5.4.0"
