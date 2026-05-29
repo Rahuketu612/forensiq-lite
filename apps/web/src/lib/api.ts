@@ -233,6 +233,43 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ reviewedBy }),
     }),
+
+  // AI Analysis
+  checkAiStatus: (): Promise<{ available: boolean; models: string[] }> =>
+    request<{ available: boolean; models: string[] }>('/cases/ai/status'),
+
+  getAiHistory: (caseId: string) =>
+    request<AiAnalysisRecord[]>(`/cases/${caseId}/ai/history`),
+
+  generateAiSummary: (caseId: string, model?: string) =>
+    request<AiAnalysisResult>(`/cases/${caseId}/ai/summary`, {
+      method: 'POST',
+      body: JSON.stringify({ model }),
+    }),
+
+  generateAiTimeline: (caseId: string, model?: string) =>
+    request<AiAnalysisResult>(`/cases/${caseId}/ai/timeline`, {
+      method: 'POST',
+      body: JSON.stringify({ model }),
+    }),
+
+  generateAiQuestions: (caseId: string, model?: string) =>
+    request<AiAnalysisResult>(`/cases/${caseId}/ai/questions`, {
+      method: 'POST',
+      body: JSON.stringify({ model }),
+    }),
+
+  generateAiEvidenceGaps: (caseId: string, model?: string) =>
+    request<AiAnalysisResult>(`/cases/${caseId}/ai/evidence-gaps`, {
+      method: 'POST',
+      body: JSON.stringify({ model }),
+    }),
+
+  generateAiFullAnalysis: (caseId: string, model?: string) =>
+    request<AiAnalysisResult>(`/cases/${caseId}/ai/full-analysis`, {
+      method: 'POST',
+      body: JSON.stringify({ model }),
+    }),
 };
 
 export interface User {
@@ -736,3 +773,27 @@ export const fundTrailApi = {
   deleteLink: (caseId: string, linkId: string): Promise<void> =>
     request<void>(`/cases/${caseId}/fund-trail/links/${linkId}`, { method: 'DELETE' }),
 };
+
+// AI Analysis Types
+export interface AiAnalysisResult {
+  analysis: string;
+  model: string;
+  duration: number;
+  tokenCount?: number;
+}
+
+export interface AiAnalysisRecord {
+  id: string;
+  caseId: string;
+  analysisType: 'SUMMARY' | 'TIMELINE' | 'QUESTIONS' | 'EVIDENCE_GAPS' | 'FULL_ANALYSIS';
+  response: string;
+  modelName: string;
+  tokenCount?: number;
+  duration?: number;
+  createdAt: string;
+  createdBy: {
+    id: string;
+    name: string;
+    email: string;
+  };
+}

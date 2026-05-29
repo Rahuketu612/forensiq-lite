@@ -159,6 +159,7 @@ model User {
   transactionLinksCreated TransactionLink[]   @relation("LinkCreator")
   transactionLinksDeleted TransactionLink[]   @relation("LinkDeleter")
   fundTrailPatternsCreated FundTrailPattern[] @relation("PatternCreator")
+  aiAnalyses          AiAnalysis[]
 
   @@index([email])
 }
@@ -217,6 +218,7 @@ model Case {
   graphNodes     GraphNode[]
   graphEdges     GraphEdge[]
   graphAuditLogs GraphAuditLog[]
+  aiAnalyses     AiAnalysis[]
 
   @@index([caseNumber])
   @@index([status])
@@ -731,4 +733,37 @@ model GraphAuditLog {
   @@index([caseId])
   @@index([action])
   @@index([createdAt])
+}
+
+// =============================================================================
+// AI ANALYSIS MODELS - Audit Trail for AI Investigation Assistant
+// =============================================================================
+
+enum AnalysisType {
+  SUMMARY
+  TIMELINE
+  QUESTIONS
+  EVIDENCE_GAPS
+  FULL_ANALYSIS
+}
+
+model AiAnalysis {
+  id           String       @id @default(uuid())
+  caseId       String
+  analysisType AnalysisType
+  prompt       String       @db.Text
+  response     String       @db.Text
+  modelName    String
+  tokenCount   Int?
+  duration     Int?         // Duration in milliseconds
+  createdAt    DateTime     @default(now())
+  createdById  String
+
+  case         Case         @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  createdBy    User         @relation(fields: [createdById], references: [id])
+
+  @@index([caseId])
+  @@index([analysisType])
+  @@index([createdAt])
+  @@index([createdById])
 }

@@ -8,7 +8,7 @@ import { api, Case } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, FileText, AlertTriangle, Activity, Loader2 } from 'lucide-react';
+import { ArrowLeft, FileText, AlertTriangle, Activity, Loader2, Sparkles } from 'lucide-react';
 
 export default function CaseDetailPage() {
   const router = useRouter();
@@ -182,6 +182,20 @@ export default function CaseDetailPage() {
                       <div>
                         <h3 className="font-semibold">Entity Analysis</h3>
                         <p className="text-sm text-muted-foreground">Entity resolution and clustering</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+
+              <Link href={`/cases/${caseId}/ai`}>
+                <Card className="hover:border-primary transition-colors cursor-pointer">
+                  <CardContent className="pt-6">
+                    <div className="flex items-center gap-3">
+                      <Sparkles className="h-8 w-8 text-cyan-500" />
+                      <div>
+                        <h3 className="font-semibold">AI Analysis</h3>
+                        <p className="text-sm text-muted-foreground">AI-powered investigation insights</p>
                       </div>
                     </div>
                   </CardContent>
