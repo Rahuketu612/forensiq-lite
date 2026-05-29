@@ -7,7 +7,6 @@ import { useAuth } from '@/contexts';
 import FundTrailPanel from '@/components/fund-trail-panel';
 import PatternsPanel from '@/components/patterns-panel';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { Loader2, ArrowLeft, FileText, GitBranch } from 'lucide-react';
 
@@ -17,6 +16,7 @@ export default function FundTrailPage() {
   const caseId = params.id as string;
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [caseName, setCaseName] = useState<string>('');
+  const [activeView, setActiveView] = useState<'links' | 'patterns'>('links');
 
   const fetchCaseName = useCallback(async () => {
     try {
@@ -74,26 +74,29 @@ export default function FundTrailPage() {
 
       {/* Main Content */}
       <main className="container py-8">
-        <Tabs defaultValue="links">
-          <TabsList className="mb-6">
-            <TabsTrigger value="links">
-              <FileText className="h-4 w-4 mr-2" />
-              Transaction Links
-            </TabsTrigger>
-            <TabsTrigger value="patterns">
-              <GitBranch className="h-4 w-4 mr-2" />
-              Pattern Analysis
-            </TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="links">
-            <FundTrailPanel caseId={caseId} />
-          </TabsContent>
-          
-          <TabsContent value="patterns">
-            <PatternsPanel caseId={caseId} />
-          </TabsContent>
-        </Tabs>
+        {/* View Toggle */}
+        <div className="flex gap-2 mb-6">
+          <Button
+            variant={activeView === 'links' ? 'default' : 'outline'}
+            onClick={() => setActiveView('links')}
+          >
+            <FileText className="h-4 w-4 mr-2" />
+            Transaction Links
+          </Button>
+          <Button
+            variant={activeView === 'patterns' ? 'default' : 'outline'}
+            onClick={() => setActiveView('patterns')}
+          >
+            <GitBranch className="h-4 w-4 mr-2" />
+            Pattern Analysis
+          </Button>
+        </div>
+
+        {activeView === 'links' ? (
+          <FundTrailPanel caseId={caseId} />
+        ) : (
+          <PatternsPanel caseId={caseId} />
+        )}
       </main>
     </div>
   );

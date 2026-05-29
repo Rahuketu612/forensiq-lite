@@ -5,7 +5,6 @@ import { fundTrailApi, FundTrailPattern, PatternType, PatternSummary } from '@/l
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, Search, AlertCircle, CheckCircle, Clock, XCircle, Eye, Info } from 'lucide-react';
 
 interface PatternsPanelProps {
@@ -39,7 +38,7 @@ const statusIcons: Record<string, React.ReactNode> = {
 // Pattern type colors
 const patternTypeColors: Record<PatternType, string> = {
   CIRCULAR_FLOW: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 border-purple-300',
-  LAYERING: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 border-ambere-300',
+  LAYERING: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 border-amber-300',
   ROUND_TRIPPING: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 border-blue-300',
   REPEATED_CHAIN: 'bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200 border-teal-300',
 };
@@ -70,7 +69,7 @@ export default function PatternsPanel({ caseId }: PatternsPanelProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<PatternType | 'all'>('all');
+  const [activeFilter, setActiveFilter] = useState<PatternType | 'all'>('all');
 
   const fetchPatterns = useCallback(async () => {
     try {
@@ -112,8 +111,8 @@ export default function PatternsPanel({ caseId }: PatternsPanelProps) {
   };
 
   const filteredPatterns = patterns?.patterns.filter((p) => {
-    if (activeTab === 'all') return true;
-    return p.patternType === activeTab;
+    if (activeFilter === 'all') return true;
+    return p.patternType === activeFilter;
   }) || [];
 
   const patternCountByType = patterns?.summary.byType || {};
@@ -138,7 +137,7 @@ export default function PatternsPanel({ caseId }: PatternsPanelProps) {
               Fund Trail Pattern Analysis
             </CardTitle>
             <CardDescription>
-              Deterministic pattern detection requiring auditor review (no AI)
+              Deterministic pattern detection requiring auditor review
             </CardDescription>
           </div>
           <Button 
@@ -165,16 +164,42 @@ export default function PatternsPanel({ caseId }: PatternsPanelProps) {
         )}
 
         {/* Summary Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
           <div className="p-4 bg-muted rounded-lg">
             <p className="text-sm text-muted-foreground">Total Patterns</p>
             <p className="text-2xl font-bold">{patterns?.summary.total || 0}</p>
           </div>
-          {Object.entries(patternCountByType).map(([type, count]) => (
+          {(Object.keys(patternTypeLabels) as PatternType[]).map((type) => (
             <div key={type} className="p-4 bg-muted rounded-lg">
-              <p className="text-sm text-muted-foreground">{patternTypeLabels[type as PatternType]}</p>
-              <p className="text-2xl font-bold">{count}</p>
+              <p className="text-sm text-muted-foreground">{patternTypeLabels[type]}</p>
+              <p className="text-2xl font-bold">{patternCountByType[type] || 0}</p>
             </div>
+          ))}
+        </div>
+
+        {/* Filter Buttons */}
+        <div className="flex flex-wrap gap-2 mb-4">
+          <Button 
+            size="sm" 
+            variant={activeFilter === 'all' ? 'default' : 'outline'}
+            onClick={() => setActiveFilter('all')}
+          >
+            All Patterns
+          </Button>
+          {(Object.keys(patternTypeLabels) as PatternType[]).map((type) => (
+            <Button
+              key={type}
+              size="sm"
+              variant={activeFilter === type ? 'default' : 'outline'}
+              onClick={() => setActiveFilter(type)}
+            >
+              {patternTypeLabels[type]}
+              {patternCountByType[type] && (
+                <Badge variant="secondary" className="ml-2">
+                  {patternCountByType[type]}
+                </Badge>
+              )}
+            </Button>
           ))}
         </div>
 
@@ -199,42 +224,24 @@ export default function PatternsPanel({ caseId }: PatternsPanelProps) {
           </div>
         </div>
 
-        {/* Tabs by Pattern Type */}
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as PatternType | 'all')}>
-          <TabsList className="mb-4">
-            <TabsTrigger value="all">All Patterns</TabsTrigger>
-            {(Object.keys(patternTypeLabels) as PatternType[]).map((type) => (
-              <TabsTrigger key={type} value={type}>
-                {patternTypeLabels[type]}
-                {patternCountByType[type] && (
-                  <Badge variant="secondary" className="ml-2">
-                    {patternCountByType[type]}
-                  </Badge>
-                )}
-              </TabsTrigger>
+        {/* Pattern Cards */}
+        {filteredPatterns.length === 0 ? (
+          <div className="text-center py-12 text-muted-foreground">
+            <Search className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            <p>No patterns detected yet.</p>
+            <p className="text-sm">Run pattern analysis to detect fund-flow patterns.</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {filteredPatterns.map((pattern) => (
+              <PatternCard 
+                key={pattern.id}
+                pattern={pattern}
+                onStatusUpdate={handleStatusUpdate}
+              />
             ))}
-          </TabsList>
-
-          <TabsContent value={activeTab}>
-            {filteredPatterns.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground">
-                <Search className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No patterns detected yet.</p>
-                <p className="text-sm">Run pattern analysis to detect fund-flow patterns.</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {filteredPatterns.map((pattern) => (
-                  <PatternCard 
-                    key={pattern.id}
-                    pattern={pattern}
-                    onStatusUpdate={handleStatusUpdate}
-                  />
-                ))}
-              </div>
-            )}
-          </TabsContent>
-        </Tabs>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
