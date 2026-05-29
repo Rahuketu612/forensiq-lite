@@ -234,14 +234,14 @@ export default function RedFlagsPage() {
             <div className="flex flex-col lg:flex-row gap-4">
               {/* Severity Filter */}
               <Select
-                value={filters.severity || ''}
-                onValueChange={(value) => handleFilterChange('severity', value || undefined)}
+                value={filters.severity || 'all'}
+                onValueChange={(value) => handleFilterChange('severity', value === 'all' ? undefined : value)}
               >
                 <SelectTrigger className="w-full lg:w-[150px]">
                   <SelectValue placeholder="Severity" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Severities</SelectItem>
+                  <SelectItem value="all">All Severities</SelectItem>
                   <SelectItem value="CRITICAL">Critical</SelectItem>
                   <SelectItem value="HIGH">High</SelectItem>
                   <SelectItem value="MEDIUM">Medium</SelectItem>
