@@ -28,11 +28,9 @@
     "eslint-plugin-simple-import-sort": "^13.0.0",
     "eslint-plugin-tailwindcss": "^3.18.3",
     "prettier": "^3.2.5",
-<<<<<<< HEAD
     "tsx": "^4.11.0",
-=======
-    "ts-node": "^10.9.2",
->>>>>>> 969bcae (feat: implement relationship graph V1)
+    "ts-node": "^10.9.2"
+     969bcae (feat: implement relationship graph V1)
     "typescript": "^5.4.0"
   },
   "engines": {
