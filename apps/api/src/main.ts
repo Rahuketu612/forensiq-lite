@@ -19,17 +19,21 @@ async function bootstrap() {
 
   // Security
   app.use(helmet());
+  
+  // CORS configuration - single origin for local development
+  const corsOrigin = configService.get<string>('CORS_ORIGIN', 'http://localhost:3000');
   app.enableCors({
-    origin: configService.get<string>('CORS_ORIGINS', frontendUrl),
+    origin: corsOrigin,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   });
 
-  // API versioning
-  app.enableVersioning({
-    type: VersioningType.URI,
-    defaultVersion: '1',
-  });
+  // API versioning - Disabled for debugging
+  // app.enableVersioning({
+  //   type: VersioningType.URI,
+  //   defaultVersion: '1',
+  // });
 
   // Global prefix
   app.setGlobalPrefix(globalPrefix);
