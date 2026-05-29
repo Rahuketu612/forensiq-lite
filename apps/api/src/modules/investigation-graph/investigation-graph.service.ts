@@ -19,7 +19,8 @@ export class InvestigationGraphService {
 
     this.createEntityNodes(entities, nodeMap);
     this.createIdentifierNodes(transactions, nodeMap);
-    await this.createGraphEdges(caseId, entities, transactions, nodeMap, edgeList);
+    this.createEntityToIdentifierEdges(entities, nodeMap, edgeList);
+    this.createEntityToEntityEdges(entities, transactions, nodeMap, edgeList);
 
     return await this.persistGraph(caseId, nodeMap, edgeList);
   }
@@ -299,58 +300,24 @@ export class InvestigationGraphService {
     }
   }
 
-  private async createGraphEdges(
-    caseId: string,
-    entities: any[],
-    transactions: any[],
-    nodeMap: Map<string, any>,
-    edgeList: any[],
-  ): Promise<void> {
-    // OWNS edges: entities linked to their identifiers
+  private createEntityToIdentifierEdges(entities: any[], nodeMap: Map<string, any>, edgeList: any[]): void {
     for (const entity of entities) {
+      const sourceNodeKey = `entity:${entity.id}`;
+      
       for (const alias of entity.aliases) {
         const identifierType = this.matchTypeToNodeType(alias.matchType);
-        if (identifierType && nodeMap.has(`identifier:${identifierType}:${alias.aliasName.toLowerCase()}`)) {
-          edgeList.push({
-            sourceLabel: entity.canonicalName,
-            targetLabel: alias.aliasName,
-            edgeType: 'OWNS',
-            confidenceScore: alias.confidenceScore,
-            explanation: `${identifierType} found in ${entity.transactions.length} transaction(s)`,
-            evidenceCount: entity.transactions.length,
-            evidence: { transactionIds: entity.transactions.map((t: any) => t.transactionId) },
-          });
-        }
-      }
-    }
-
-    // Get transactions for entity linking via counterparty
-    for (const entity of entities) {
-      const entityTransactions = transactions.filter((tx: any) =>
-        entity.transactions.some((et: any) => et.transactionId === tx.transactionId)
-      );
-
-      // Find entities that share counterparty patterns
-      const entityTransactionDescriptions = entityTransactions.map((tx: any) => tx.description || '');
-      
-      for (const otherEntity of entities) {
-        if (otherEntity.id !== entity.id) {
-          const otherTransactions = transactions.filter((tx: any) =>
-            otherEntity.transactions.some((et: any) => et.transactionId === tx.transactionId)
-          );
-
-          // Check for shared identifiers across transactions
-          const sharedPatterns = this.findSharedPatterns(entityTransactions, otherTransactions);
+        if (identifierType) {
+          const targetNodeKey = `identifier:${identifierType}:${alias.aliasName.toLowerCase()}`;
           
-          if (sharedPatterns.length > 0) {
+          if (nodeMap.has(targetNodeKey)) {
             edgeList.push({
-              sourceLabel: entity.canonicalName,
-              targetLabel: otherEntity.canonicalName,
-              edgeType: 'TRANSACTED_WITH',
-              confidenceScore: 60,
-              explanation: `Entities share counterparty patterns: ${sharedPatterns.join(', ')}`,
-              evidenceCount: sharedPatterns.length,
-              evidence: { sharedPatterns, entityIds: [entity.id, otherEntity.id] },
+              sourceNodeKey,
+              targetNodeKey,
+              edgeType: 'OWNS',
+              confidenceScore: alias.confidenceScore,
+              explanation: `${identifierType} associated with ${entity.canonicalName}`,
+              evidenceCount: entity.transactions.length,
+              evidence: { transactionIds: entity.transactions.map((t: any) => t.transactionId) },
             });
           }
         }
@@ -358,20 +325,101 @@ export class InvestigationGraphService {
     }
   }
 
+  private createEntityToEntityEdges(entities: any[], transactions: any[], nodeMap: Map<string, any>, edgeList: any[]): void {
+    // Collect all identifiers per entity
+    const entityIdentifiers = new Map<string, string[]>();
+    for (const entity of entities) {
+      const identifiers: string[] = [];
+      for (const alias of entity.aliases) {
+        const identifierType = this.matchTypeToNodeType(alias.matchType);
+        if (identifierType) {
+          identifiers.push(`identifier:${identifierType}:${alias.aliasName.toLowerCase()}`);
+        }
+      }
+      entityIdentifiers.set(entity.id, identifiers);
+    }
+
+    // Find entities sharing identifiers
+    for (let i = 0; i < entities.length; i++) {
+      for (let j = i + 1; j < entities.length; j++) {
+        const entity1 = entities[i];
+        const entity2 = entities[j];
+        const ids1 = entityIdentifiers.get(entity1.id) || [];
+        const ids2 = entityIdentifiers.get(entity2.id) || [];
+
+        const sharedIdentifiers = ids1.filter(id => ids2.includes(id) && nodeMap.has(id));
+
+        if (sharedIdentifiers.length > 0) {
+          edgeList.push({
+            sourceNodeKey: `entity:${entity1.id}`,
+            targetNodeKey: `entity:${entity2.id}`,
+            edgeType: 'SHARES_IDENTIFIER',
+            confidenceScore: 0.85,
+            explanation: `Both entities use ${sharedIdentifiers.length} shared identifier(s)`,
+            evidenceCount: sharedIdentifiers.length,
+            evidence: { sharedIdentifiers, entityIds: [entity1.id, entity2.id] },
+          });
+        }
+      }
+    }
+
+    // Entity to entity edges based on transaction patterns
+    for (const entity of entities) {
+      const entityTxIds = new Set(entity.transactions.map((t: any) => t.transactionId));
+      const entityTransactions = transactions.filter((tx: any) => entityTxIds.has(tx.transactionId));
+
+      for (const otherEntity of entities) {
+        if (otherEntity.id === entity.id) continue;
+
+        const otherTxIds = new Set(otherEntity.transactions.map((t: any) => t.transactionId));
+        const otherTransactions = transactions.filter((tx: any) => otherTxIds.has(tx.transactionId));
+
+        const sharedPatterns = this.findSharedPatterns(entityTransactions, otherTransactions);
+
+        if (sharedPatterns.length > 0) {
+          edgeList.push({
+            sourceNodeKey: `entity:${entity.id}`,
+            targetNodeKey: `entity:${otherEntity.id}`,
+            edgeType: 'TRANSACTED_WITH',
+            confidenceScore: 0.65,
+            explanation: `Transaction patterns overlap: ${sharedPatterns.slice(0, 3).join(', ')}`,
+            evidenceCount: sharedPatterns.length,
+            evidence: { sharedPatterns: sharedPatterns.slice(0, 5), entityIds: [entity.id, otherEntity.id] },
+          });
+        }
+      }
+    }
+  }
+
   private findSharedPatterns(transactions1: any[], transactions2: any[]): string[] {
     const patterns: string[] = [];
-    
-    // Extract all identifiers from both sets of transactions
-    const extractPattern = (desc: string): string | null => {
-      const match = (desc || '').match(/\b([A-Za-z][A-Za-z\s]{2,30})\b/);
-      return match ? match[1].trim() : null;
+
+    const extractPatterns = (desc: string): Set<string> => {
+      const patternSet = new Set<string>();
+      const namePattern = /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\b/g;
+      let match;
+      while ((match = namePattern.exec(desc)) !== null) {
+        const name = match[1].trim();
+        if (name.length > 2 && !['GSTIN', 'PAN', 'Acct', 'IFSC', 'UPI', 'Phone'].includes(name)) {
+          patternSet.add(name.toLowerCase());
+        }
+      }
+      return patternSet;
     };
 
-    const patterns1 = new Set(transactions1.map((tx: any) => extractPattern(tx.description)));
-    const patterns2 = new Set(transactions2.map((tx: any) => extractPattern(tx.description)));
+    const patterns1 = new Set<string>();
+    const patterns2 = new Set<string>();
+
+    for (const tx of transactions1) {
+      extractPatterns(tx.description || '').forEach(p => patterns1.add(p));
+    }
+
+    for (const tx of transactions2) {
+      extractPatterns(tx.description || '').forEach(p => patterns2.add(p));
+    }
 
     for (const p of patterns1) {
-      if (p && patterns2.has(p)) {
+      if (patterns2.has(p)) {
         patterns.push(p);
       }
     }
@@ -401,30 +449,29 @@ export class InvestigationGraphService {
 
       await tx.graphNode.createMany({ data: nodesToCreate });
 
-      // Create edges by looking up node IDs
+      // Create edges by looking up node IDs by their keys
       const edgesToCreate = [];
       const seenEdges = new Set<string>();
-      
+
       for (const edge of edgeList) {
-        // Avoid duplicates
-        const edgeKey = `${edge.sourceLabel}:${edge.targetLabel}:${edge.edgeType}`;
-        if (seenEdges.has(edgeKey)) continue;
-        
         const sourceNode = await tx.graphNode.findFirst({
-          where: { caseId, label: edge.sourceLabel, nodeType: 'ENTITY' },
+          where: { id: edge.sourceNodeKey },
         });
         const targetNode = await tx.graphNode.findFirst({
-          where: { caseId, label: edge.targetLabel, nodeType: 'ENTITY' },
+          where: { id: edge.targetNodeKey },
         });
 
         if (sourceNode && targetNode && sourceNode.id !== targetNode.id) {
+          const edgeKey = `${sourceNode.id}:${targetNode.id}:${edge.edgeType}`;
+          if (seenEdges.has(edgeKey)) continue;
           seenEdges.add(edgeKey);
+
           edgesToCreate.push({
             caseId,
             sourceNodeId: sourceNode.id,
             targetNodeId: targetNode.id,
             edgeType: edge.edgeType,
-            confidenceScore: edge.confidenceScore / 100,
+            confidenceScore: edge.confidenceScore,
             explanation: edge.explanation,
             evidenceCount: edge.evidenceCount,
             metadata: edge.evidence,

@@ -66,26 +66,26 @@ async function main() {
   console.log(`✅ Created transaction import`);
 
   const transactionData = [
-    { date: '2024-01-15', desc: 'RTGS from ABC Corp - Invoice Payment', amount: 150000, type: TransactionType.CREDIT, balance: 150000, counterparty: 'ABC Corporation', mode: TransactionMode.RTGS, ref: 'RTGS2024001001' },
-    { date: '2024-01-18', desc: 'Vendor Payment - Tech Solutions Ltd', amount: 45000, type: TransactionType.DEBIT, balance: 105000, counterparty: 'Tech Solutions Limited', mode: TransactionMode.NEFT, ref: 'NEFT2024001020' },
-    { date: '2024-01-22', desc: 'Wire Transfer - New Vendor XYZ', amount: 2500000, type: TransactionType.DEBIT, balance: 2550000, counterparty: 'XYZ Supplies Private Limited', mode: TransactionMode.ONLINE, ref: 'WIRE2024001225' },
-    { date: '2024-01-25', desc: 'Payment Clearance', amount: 100000, type: TransactionType.DEBIT, balance: 2450000, counterparty: 'M/s Rahul Enterprises', mode: TransactionMode.CHEQUE, ref: 'CHQ2024012501' },
-    { date: '2024-01-27', desc: 'Emergency Transfer - Account Payable', amount: 75000, type: TransactionType.DEBIT, balance: 2375000, counterparty: 'Various Creditors', mode: TransactionMode.IMPS, ref: 'IMPS2024012701' },
-    { date: '2024-02-01', desc: 'Settlement as per our discussion - DO NOT RECONCILE', amount: 200000, type: TransactionType.DEBIT, balance: 2175000, counterparty: 'Confidential Account', mode: TransactionMode.ONLINE, ref: 'ONL2024020101' },
-    { date: '2024-02-05', desc: 'Annual Maintenance Contract Payment', amount: 180000, type: TransactionType.DEBIT, balance: 1995000, counterparty: 'ServicePro Consultants', mode: TransactionMode.NEFT, ref: 'NEFT2024020501' },
-    { date: '2024-02-06', desc: 'AMC Payment - ServicePro Consultants', amount: 180000, type: TransactionType.DEBIT, balance: 1815000, counterparty: 'ServicePro Consultants', mode: TransactionMode.NEFT, ref: 'NEFT2024020601' },
-    { date: '2024-02-10', desc: 'Rent Deposit Refund', amount: 25000, type: TransactionType.CREDIT, balance: 1840000, counterparty: 'Property Owner', mode: TransactionMode.BANK, ref: 'BANK2024021001' },
-    { date: '2024-02-15', desc: 'Customer Receipt - Mega Mart', amount: 890000, type: TransactionType.CREDIT, balance: 2730000, counterparty: 'Mega Mart Retail Chain', mode: TransactionMode.RTGS, ref: 'RTGS2024021501' },
-    { date: '2024-02-20', desc: 'Petty Cash Replenishment', amount: 49999, type: TransactionType.DEBIT, balance: 2680001, counterparty: 'Cash Management A/c', mode: TransactionMode.CASH, ref: 'CASH2024022001' },
-    { date: '2024-02-21', desc: 'Petty Cash Top-up', amount: 49999, type: TransactionType.DEBIT, balance: 2630002, counterparty: 'Cash Management A/c', mode: TransactionMode.CASH, ref: 'CASH2024022101' },
-    { date: '2024-02-22', desc: 'Cash Withdrawal Replenish', amount: 49999, type: TransactionType.DEBIT, balance: 2580003, counterparty: 'Cash Management A/c', mode: TransactionMode.CASH, ref: 'CASH2024022201' },
-    { date: '2024-03-01', desc: 'Electricity Bill Payment - State Discom', amount: 125000, type: TransactionType.DEBIT, balance: 2455003, counterparty: 'MSEDCL', mode: TransactionMode.ONLINE, ref: 'UTI2024030101' },
-    { date: '2024-03-05', desc: 'New Vendor Payment - FastTrack Logistics', amount: 1500000, type: TransactionType.DEBIT, balance: 3955003, counterparty: 'FastTrack Logistics Pvt Ltd', mode: TransactionMode.RTGS, ref: 'RTGS2024030501' },
-    { date: '2024-03-10', desc: 'Insurance Premium Payment', amount: 75000, type: TransactionType.DEBIT, balance: 3880003, counterparty: 'United India Insurance', mode: TransactionMode.ONLINE, ref: 'ONL2024031001' },
-    { date: '2024-03-12', desc: 'Salary Disbursement - March 2024', amount: 2500000, type: TransactionType.DEBIT, balance: 1380003, counterparty: 'Employee Salary Account', mode: TransactionMode.ONLINE, ref: 'SAL2024031201' },
-    { date: '2024-03-15', desc: 'Advance from Raj Industries', amount: 750000, type: TransactionType.CREDIT, balance: 2130003, counterparty: 'Raj Industries Limited', mode: TransactionMode.RTGS, ref: 'RTGS2024031501' },
-    { date: '2024-03-20', desc: 'Settlement Payment', amount: 500000, type: TransactionType.DEBIT, balance: 1630003, counterparty: 'Account Settlement Trust', mode: TransactionMode.ONLINE, ref: 'ONL2024032001' },
-    { date: '2024-03-25', desc: 'Quarterly Interest Credit', amount: 15200, type: TransactionType.CREDIT, balance: 1645203, counterparty: 'Bank Interest', mode: TransactionMode.BANK, ref: 'BANK2024032501' },
+    { date: '2024-01-15', desc: 'RTGS from ABC Corp GSTIN:27AABCA1234B1ZX Acct:9876543210123456 IFSC:SBIN0001234', amount: 150000, type: TransactionType.CREDIT, balance: 150000, counterparty: 'ABC Corporation', mode: TransactionMode.RTGS, ref: 'RTGS2024001001' },
+    { date: '2024-01-18', desc: 'Vendor Payment Tech Solutions Ltd GSTIN:29AAACT1234A1ZY PAN:AAACT1234B UPI:techsol@oksbi Acct:456789012345', amount: 45000, type: TransactionType.DEBIT, balance: 105000, counterparty: 'Tech Solutions Limited', mode: TransactionMode.NEFT, ref: 'NEFT2024001020' },
+    { date: '2024-01-22', desc: 'Wire Transfer to XYZ Supplies GSTIN:27AABCF5678C2ZA PAN:AABCF5678C Phone:9876543210', amount: 2500000, type: TransactionType.DEBIT, balance: 2550000, counterparty: 'XYZ Supplies Private Limited', mode: TransactionMode.ONLINE, ref: 'WIRE2024001225' },
+    { date: '2024-01-25', desc: 'Payment to Rahul Enterprises Acct:123456789012 UPI:rahulent@okaxis Phone:9123456789', amount: 100000, type: TransactionType.DEBIT, balance: 2450000, counterparty: 'M/s Rahul Enterprises', mode: TransactionMode.CHEQUE, ref: 'CHQ2024012501' },
+    { date: '2024-01-27', desc: 'IMPS Transfer Phone:9988776655 UPI:vendors@paytm Acct:789012345678', amount: 75000, type: TransactionType.DEBIT, balance: 2375000, counterparty: 'Various Creditors', mode: TransactionMode.IMPS, ref: 'IMPS2024012701' },
+    { date: '2024-02-01', desc: 'Settlement Payment DO NOT RECONCILE Acct:456123789014', amount: 200000, type: TransactionType.DEBIT, balance: 2175000, counterparty: 'Confidential Account', mode: TransactionMode.ONLINE, ref: 'ONL2024020101' },
+    { date: '2024-02-05', desc: 'AMC Payment ServicePro Consultants GSTIN:19AADCS5678A1ZB Acct:321654987012 IFSC:HDFC0001234', amount: 180000, type: TransactionType.DEBIT, balance: 1995000, counterparty: 'ServicePro Consultants', mode: TransactionMode.NEFT, ref: 'NEFT2024020501' },
+    { date: '2024-02-06', desc: 'AMC Payment ServicePro Consultants GSTIN:19AADCS5678A1ZB Acct:321654987012 UPI:svcpro@hdfc', amount: 180000, type: TransactionType.DEBIT, balance: 1815000, counterparty: 'ServicePro Consultants', mode: TransactionMode.NEFT, ref: 'NEFT2024020601' },
+    { date: '2024-02-10', desc: 'Rent Deposit Refund Owner PAN:AAAAX1234Y', amount: 25000, type: TransactionType.CREDIT, balance: 1840000, counterparty: 'Property Owner', mode: TransactionMode.BANK, ref: 'BANK2024021001' },
+    { date: '2024-02-15', desc: 'Customer Receipt Mega Mart GSTIN:24AAACM1234A1ZC Acct:1472583690258369', amount: 890000, type: TransactionType.CREDIT, balance: 2730000, counterparty: 'Mega Mart Retail Chain', mode: TransactionMode.RTGS, ref: 'RTGS2024021501' },
+    { date: '2024-02-20', desc: 'Petty Cash Replenishment CashAcct Acct:258147369012', amount: 49999, type: TransactionType.DEBIT, balance: 2680001, counterparty: 'Cash Management A/c', mode: TransactionMode.CASH, ref: 'CASH2024022001' },
+    { date: '2024-02-21', desc: 'Petty Cash Top-up CashAcct Acct:258147369012', amount: 49999, type: TransactionType.DEBIT, balance: 2630002, counterparty: 'Cash Management A/c', mode: TransactionMode.CASH, ref: 'CASH2024022101' },
+    { date: '2024-02-22', desc: 'Cash Withdrawal Replenish CashAcct Acct:258147369012', amount: 49999, type: TransactionType.DEBIT, balance: 2580003, counterparty: 'Cash Management A/c', mode: TransactionMode.CASH, ref: 'CASH2024022201' },
+    { date: '2024-03-01', desc: 'Electricity Bill MSEDCL Acct:258741963025', amount: 125000, type: TransactionType.DEBIT, balance: 2455003, counterparty: 'MSEDCL', mode: TransactionMode.ONLINE, ref: 'UTI2024030101' },
+    { date: '2024-03-05', desc: 'FastTrack Logistics Payment GSTIN:29AADCF7890A2ZB PAN:AADCF7890B Acct:963258741012', amount: 1500000, type: TransactionType.DEBIT, balance: 3955003, counterparty: 'FastTrack Logistics Pvt Ltd', mode: TransactionMode.RTGS, ref: 'RTGS2024030501' },
+    { date: '2024-03-10', desc: 'Insurance Premium United India GSTIN:18AAADU5678A1ZD Acct:741369852014 IFSC:ICIC0001234', amount: 75000, type: TransactionType.DEBIT, balance: 3880003, counterparty: 'United India Insurance', mode: TransactionMode.ONLINE, ref: 'ONL2024031001' },
+    { date: '2024-03-12', desc: 'Salary Disbursement Bank Acct:159753486211', amount: 2500000, type: TransactionType.DEBIT, balance: 1380003, counterparty: 'Employee Salary Account', mode: TransactionMode.ONLINE, ref: 'SAL2024031201' },
+    { date: '2024-03-15', desc: 'Advance from Raj Industries GSTIN:27AABCR4567A3ZA PAN:AABCR4567B', amount: 750000, type: TransactionType.CREDIT, balance: 2130003, counterparty: 'Raj Industries Limited', mode: TransactionMode.RTGS, ref: 'RTGS2024031501' },
+    { date: '2024-03-20', desc: 'Settlement Payment Trust Acct:852963741025', amount: 500000, type: TransactionType.DEBIT, balance: 1630003, counterparty: 'Account Settlement Trust', mode: TransactionMode.ONLINE, ref: 'ONL2024032001' },
+    { date: '2024-03-25', desc: 'Quarterly Interest Credit Bank Interest Acct:135792468012', amount: 15200, type: TransactionType.CREDIT, balance: 1645203, counterparty: 'Bank Interest', mode: TransactionMode.BANK, ref: 'BANK2024032501' },
   ];
 
   const transactions = [];
@@ -107,6 +107,118 @@ async function main() {
     transactions.push(created);
   }
   console.log(`✅ Created ${transactions.length} sample transactions`);
+
+  // Create entities from counterparties with aliases (identifiers)
+  const entityData = [
+    {
+      name: 'ABC Corporation',
+      riskScore: 10,
+      totalAmount: 150000,
+      aliases: [
+        { name: '27AABCA1234B1ZX', type: 'GSTIN', source: 'description', confidence: 0.95 },
+        { name: '9876543210123456', type: 'BANK_ACCOUNT', source: 'description', confidence: 0.90 },
+        { name: 'SBIN0001234', type: 'IFSC', source: 'description', confidence: 0.95 },
+      ],
+      txIndices: [0],
+    },
+    {
+      name: 'Tech Solutions Limited',
+      riskScore: 25,
+      totalAmount: 45000,
+      aliases: [
+        { name: '29AAACT1234A1ZY', type: 'GSTIN', source: 'description', confidence: 0.95 },
+        { name: 'AAACT1234B', type: 'PAN', source: 'description', confidence: 0.90 },
+        { name: 'techsol@oksbi', type: 'UPI_ID', source: 'description', confidence: 0.85 },
+        { name: '456789012345', type: 'BANK_ACCOUNT', source: 'description', confidence: 0.85 },
+      ],
+      txIndices: [1],
+    },
+    {
+      name: 'XYZ Supplies Private Limited',
+      riskScore: 85,
+      totalAmount: 2500000,
+      aliases: [
+        { name: '27AABCF5678C2ZA', type: 'GSTIN', source: 'description', confidence: 0.95 },
+        { name: 'AABCF5678C', type: 'PAN', source: 'description', confidence: 0.90 },
+        { name: '9876543210', type: 'PHONE', source: 'description', confidence: 0.80 },
+      ],
+      txIndices: [2],
+    },
+    {
+      name: 'M/s Rahul Enterprises',
+      riskScore: 45,
+      totalAmount: 100000,
+      aliases: [
+        { name: '123456789012', type: 'BANK_ACCOUNT', source: 'description', confidence: 0.90 },
+        { name: 'rahulent@okaxis', type: 'UPI_ID', source: 'description', confidence: 0.85 },
+        { name: '9123456789', type: 'PHONE', source: 'description', confidence: 0.85 },
+      ],
+      txIndices: [3],
+    },
+    {
+      name: 'ServicePro Consultants',
+      riskScore: 70,
+      totalAmount: 360000,
+      aliases: [
+        { name: '19AADCS5678A1ZB', type: 'GSTIN', source: 'description', confidence: 0.95 },
+        { name: '321654987012', type: 'BANK_ACCOUNT', source: 'description', confidence: 0.90 },
+        { name: 'HDFC0001234', type: 'IFSC', source: 'description', confidence: 0.95 },
+        { name: 'svcpro@hdfc', type: 'UPI_ID', source: 'description', confidence: 0.85 },
+      ],
+      txIndices: [6, 7],
+    },
+    {
+      name: 'FastTrack Logistics Pvt Ltd',
+      riskScore: 80,
+      totalAmount: 1500000,
+      aliases: [
+        { name: '29AADCF7890A2ZB', type: 'GSTIN', source: 'description', confidence: 0.95 },
+        { name: 'AADCF7890B', type: 'PAN', source: 'description', confidence: 0.90 },
+        { name: '963258741012', type: 'BANK_ACCOUNT', source: 'description', confidence: 0.85 },
+      ],
+      txIndices: [14],
+    },
+  ];
+
+  for (const entityInfo of entityData) {
+    const entity = await prisma.entity.create({
+      data: {
+        caseId: demoCase.id,
+        canonicalName: entityInfo.name,
+        riskScore: entityInfo.riskScore,
+        totalAmount: entityInfo.totalAmount,
+        transactionCount: entityInfo.aliases.length > 0 ? entityInfo.txIndices.length : 0,
+        reviewed: false,
+      },
+    });
+
+    for (const alias of entityInfo.aliases) {
+      await prisma.entityAlias.create({
+        data: {
+          entityId: entity.id,
+          aliasName: alias.name,
+          matchType: alias.type as any,
+          source: alias.source,
+          confidenceScore: alias.confidence,
+          transactionId: transactions[entityInfo.txIndices[0]]?.id,
+        },
+      });
+    }
+
+    // Link entity to transactions
+    for (const txIndex of entityInfo.txIndices) {
+      await prisma.transactionEntity.create({
+        data: {
+          transactionId: transactions[txIndex].id,
+          entityId: entity.id,
+          role: 'counterparty',
+          matchScore: 0.95,
+        },
+      });
+    }
+
+    console.log(`✅ Created entity: ${entityInfo.name} with ${entityInfo.aliases.length} aliases`);
+  }
 
   await prisma.evidenceFile.createMany({
     data: [
