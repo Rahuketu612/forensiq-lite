@@ -1,4 +1,5 @@
 import { PrismaClient, UserRole, CaseStatus, RiskLevel, TransactionMode, TransactionType, RedFlagSeverity, InvestigationStatus, TimelineEventType, ImportStatus } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
@@ -12,12 +13,15 @@ async function main() {
     return;
   }
 
+  // Generate password hash at runtime to ensure it works
+  const demoPasswordHash = await bcrypt.hash('demo123', 12);
+
   // Create demo user
   const demoUser = await prisma.user.create({
     data: {
       email: 'demo@forensiq.io',
       name: 'Demo User',
-      password: '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/X4.VTtYQQ6ZdPJpGq', // demo123
+      password: demoPasswordHash,
       role: UserRole.ADMIN,
       isActive: true,
     },
