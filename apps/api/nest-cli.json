@@ -7,7 +7,7 @@
     "assets": [
       {
         "include": "*.env",
-        "outDir": "dist"
+        "outDir": "build"
       }
     ],
     "watchAssets": true

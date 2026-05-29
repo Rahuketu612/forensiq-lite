@@ -14,6 +14,7 @@ import { MappingModule } from './modules/mapping/mapping.module';
 import { ReportModule } from './modules/report/report.module';
 import { FundTrailModule } from './modules/fund-trail/fund-trail.module';
 import { EntityResolutionModule } from './modules/entity-resolution/entity-resolution.module';
+import { InvestigationGraphModule } from './modules/investigation-graph/investigation-graph.module';
 import { JwtAuthGuard, RolesGuard } from './modules/auth/guards';
 
 @Module({
@@ -44,6 +45,7 @@ import { JwtAuthGuard, RolesGuard } from './modules/auth/guards';
     ReportModule,
     FundTrailModule,
     EntityResolutionModule,
+    InvestigationGraphModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },

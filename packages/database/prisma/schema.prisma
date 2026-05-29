@@ -97,6 +97,8 @@ enum TimelineEventType {
   PATTERN_DETECTED
   PATTERN_REVIEWED
   PATTERN_STATUS_CHANGED
+  ENTITY_ANALYSIS_COMPLETED
+  GRAPH_GENERATED
 }
 
 enum LinkReason {
@@ -212,6 +214,9 @@ model Case {
   transactionLinks TransactionLink[]
   fundTrailPatterns FundTrailPattern[]
   entities       Entity[]
+  graphNodes     GraphNode[]
+  graphEdges     GraphEdge[]
+  graphAuditLogs GraphAuditLog[]
 
   @@index([caseNumber])
   @@index([status])
@@ -624,5 +629,106 @@ model EntityAliasAuditLog {
   alias           EntityAlias @relation(fields: [aliasId], references: [id], onDelete: Cascade)
 
   @@index([aliasId])
+  @@index([createdAt])
+}
+
+// =============================================================================
+// GRAPH MODELS - Investigation Relationship Graph
+// =============================================================================
+
+enum NodeType {
+  ENTITY
+  GSTIN
+  PAN
+  BANK_ACCOUNT
+  IFSC
+  PHONE
+  UPI
+  ADDRESS
+  EMAIL
+}
+
+enum EdgeType {
+  OWNS
+  USES
+  SHARES_PHONE
+  SHARES_GSTIN
+  SHARES_BANK_ACCOUNT
+  SHARES_UPI
+  SHARES_ADDRESS
+  SHARES_EMAIL
+  TRANSACTED_WITH
+  RELATED_TO
+}
+
+// GraphNode - Represents any node in the investigation graph
+model GraphNode {
+  id          String    @id @default(uuid())
+  caseId      String
+  nodeType    NodeType
+  label       String
+  externalId  String?   // Link to external entity (Entity, Transaction, etc.)
+  riskScore   Int       @default(0)
+  metadata    Json?     // Additional node data
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  case        Case      @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  
+  // Outgoing edges (as source)
+  edgesFrom   GraphEdge[] @relation("EdgeSource")
+  
+  // Incoming edges (as target)
+  edgesTo     GraphEdge[] @relation("EdgeTarget")
+
+  @@index([caseId])
+  @@index([nodeType])
+  @@index([label])
+  @@index([externalId])
+}
+
+// GraphEdge - Represents relationships between nodes
+model GraphEdge {
+  id              String    @id @default(uuid())
+  caseId          String
+  sourceNodeId    String
+  targetNodeId    String
+  edgeType        EdgeType
+  confidenceScore Float     @default(0)  // 0.0 - 1.0
+  explanation     String    // Human-readable explanation
+  evidenceCount   Int       @default(0)
+  metadata        Json?     // Additional edge data (transaction IDs, amounts, etc.)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  case            Case      @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  sourceNode      GraphNode @relation("EdgeSource", fields: [sourceNodeId], references: [id], onDelete: Cascade)
+  targetNode      GraphNode @relation("EdgeTarget", fields: [targetNodeId], references: [id], onDelete: Cascade)
+
+  @@index([caseId])
+  @@index([edgeType])
+  @@index([sourceNodeId])
+  @@index([targetNodeId])
+  @@index([confidenceScore])
+}
+
+// Graph generation audit log
+model GraphAuditLog {
+  id            String    @id @default(uuid())
+  caseId        String
+  action        String    // GENERATED, REFRESHED, NODE_ADDED, NODE_REMOVED, EDGE_ADDED, EDGE_REMOVED
+  description   String
+  nodeCount     Int?
+  edgeCount     Int?
+  details       Json?     // Additional metadata
+  triggeredBy   String    @default("system")  // "system" or userId
+  createdAt     DateTime  @default(now())
+
+  case          Case      @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId])
+  @@index([action])
   @@index([createdAt])
 }
