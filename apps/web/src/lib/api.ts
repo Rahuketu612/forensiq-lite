@@ -38,13 +38,13 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 export const api = {
   // Auth
   login: (email: string, password: string) =>
-    request<{ token: string; user: User }>('/auth/login', {
+    request<{ accessToken: string; user: User }>('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     }),
 
   register: (data: { email: string; password: string; name: string }) =>
-    request<{ token: string; user: User }>('/auth/register', {
+    request<{ accessToken: string; user: User }>('/auth/register', {
       method: 'POST',
       body: JSON.stringify(data),
     }),

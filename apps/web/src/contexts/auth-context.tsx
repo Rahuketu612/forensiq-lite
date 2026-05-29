@@ -71,7 +71,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setError(null);
     try {
       const response = await api.login(email, password);
-      localStorage.setItem(TOKEN_KEY, response.token);
+      localStorage.setItem(TOKEN_KEY, response.accessToken);
       localStorage.setItem(USER_KEY, JSON.stringify(response.user));
       setUser(response.user);
     } catch (err) {
@@ -95,7 +95,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setError(null);
     try {
       const response = await api.register({ email, name, password });
-      localStorage.setItem(TOKEN_KEY, response.token);
+      localStorage.setItem(TOKEN_KEY, response.accessToken);
       localStorage.setItem(USER_KEY, JSON.stringify(response.user));
       setUser(response.user);
     } catch (err) {

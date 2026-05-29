@@ -203,14 +203,14 @@ export default function TransactionsPage() {
 
               {/* Type Filter */}
               <Select
-                value={filters.type || ''}
-                onValueChange={(value) => handleFilterChange('type', value)}
+                value={filters.type || 'all'}
+                onValueChange={(value) => handleFilterChange('type', value === 'all' ? '' : value)}
               >
                 <SelectTrigger className="w-full lg:w-[150px]">
                   <SelectValue placeholder="Type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Types</SelectItem>
+                  <SelectItem value="all">All Types</SelectItem>
                   <SelectItem value="CREDIT">Credit</SelectItem>
                   <SelectItem value="DEBIT">Debit</SelectItem>
                   <SelectItem value="TRANSFER">Transfer</SelectItem>
@@ -221,14 +221,14 @@ export default function TransactionsPage() {
 
               {/* Mode Filter */}
               <Select
-                value={filters.mode || ''}
-                onValueChange={(value) => handleFilterChange('mode', value)}
+                value={filters.mode || 'all'}
+                onValueChange={(value) => handleFilterChange('mode', value === 'all' ? '' : value)}
               >
                 <SelectTrigger className="w-full lg:w-[150px]">
                   <SelectValue placeholder="Mode" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Modes</SelectItem>
+                  <SelectItem value="all">All Modes</SelectItem>
                   <SelectItem value="CASH">Cash</SelectItem>
                   <SelectItem value="CHEQUE">Cheque</SelectItem>
                   <SelectItem value="NEFT">NEFT</SelectItem>

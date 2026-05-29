@@ -11,9 +11,9 @@ export default function HomePage() {
 
   useEffect(() => {
     if (!isLoading) {
-      // Dev mode: go directly to dashboard
+      // Dev mode: go directly to cases list
       if (devMode || isAuthenticated) {
-        router.push('/dashboard');
+        router.push('/cases');
       } else {
         router.push('/login');
       }

@@ -4,13 +4,12 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts';
-import { caseApi, Case, CaseListResponse } from '@/lib/cases';
-import { CasesList } from '@/components/cases-list';
+import { api, Case } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Plus, Search, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
 export default function CasesPage() {
   const router = useRouter();
@@ -38,45 +37,22 @@ export default function CasesPage() {
   const fetchCases = useCallback(async () => {
     try {
       setIsLoading(true);
-      const params: Record<string, string | number> = {
-        page: pagination.page,
-        limit: pagination.limit,
-      };
-
-      if (filters.status) params.status = filters.status;
-      if (filters.riskLevel) params.riskLevel = filters.riskLevel;
-      if (filters.search) params.search = filters.search;
-
-      const response = await caseApi.list(params);
-      setCases(response.cases);
-      setPagination((prev) => ({
-        ...prev,
-        total: response.total,
-        totalPages: response.totalPages,
-      }));
+      const response = await api.getCases();
+      const casesArray = Array.isArray(response) ? response : (response as any).cases || [];
+      setCases(casesArray);
+      setPagination((prev) => ({ ...prev, total: casesArray.length, totalPages: 1 }));
     } catch (error) {
       console.error('Failed to fetch cases:', error);
     } finally {
       setIsLoading(false);
     }
-  }, [pagination.page, pagination.limit, filters]);
+  }, []);
 
   useEffect(() => {
     if (isAuthenticated) {
       fetchCases();
     }
   }, [isAuthenticated, fetchCases]);
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    setPagination((prev) => ({ ...prev, page: 1 }));
-    fetchCases();
-  };
-
-  const handleFilterChange = (key: string, value: string) => {
-    setFilters((prev) => ({ ...prev, [key]: value }));
-    setPagination((prev) => ({ ...prev, page: 1 }));
-  };
 
   if (authLoading || !isAuthenticated) {
     return (
@@ -92,7 +68,7 @@ export default function CasesPage() {
       <header className="border-b bg-card sticky top-0 z-10">
         <div className="container flex h-16 items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link href="/dashboard" className="text-xl font-bold text-primary">
+            <Link href="/cases" className="text-xl font-bold text-primary">
               ForensiQ Lite
             </Link>
             <span className="text-muted-foreground">/ Cases</span>
@@ -117,10 +93,10 @@ export default function CasesPage() {
             </p>
           </div>
 
-          {/* Filters */}
+          {/* Search */}
           <Card>
             <CardContent className="pt-6">
-              <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-4">
+              <form className="flex flex-col md:flex-row gap-4">
                 <div className="flex-1 relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -130,80 +106,46 @@ export default function CasesPage() {
                     className="pl-10"
                   />
                 </div>
-
-                <Select
-                  value={filters.status}
-                  onValueChange={(value) => handleFilterChange('status', value)}
-                >
-                  <SelectTrigger className="w-full md:w-[180px]">
-                    <SelectValue placeholder="Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">All Statuses</SelectItem>
-                    <SelectItem value="DRAFT">Draft</SelectItem>
-                    <SelectItem value="ACTIVE">Active</SelectItem>
-                    <SelectItem value="UNDER_REVIEW">Under Review</SelectItem>
-                    <SelectItem value="CLOSED">Closed</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                <Select
-                  value={filters.riskLevel}
-                  onValueChange={(value) => handleFilterChange('riskLevel', value)}
-                >
-                  <SelectTrigger className="w-full md:w-[180px]">
-                    <SelectValue placeholder="Risk Level" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">All Risks</SelectItem>
-                    <SelectItem value="LOW">Low</SelectItem>
-                    <SelectItem value="MEDIUM">Medium</SelectItem>
-                    <SelectItem value="HIGH">High</SelectItem>
-                    <SelectItem value="CRITICAL">Critical</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                <Button type="submit" variant="secondary">
-                  <Filter className="h-4 w-4 mr-2" />
-                  Filter
-                </Button>
               </form>
             </CardContent>
           </Card>
 
           {/* Cases List */}
-          <CasesList cases={cases} isLoading={isLoading} />
-
-          {/* Pagination */}
-          {pagination.totalPages > 1 && (
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-muted-foreground">
-                Showing {(pagination.page - 1) * pagination.limit + 1} to{' '}
-                {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} cases
-              </p>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPagination((prev) => ({ ...prev, page: prev.page - 1 }))}
-                  disabled={pagination.page === 1}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                  Previous
-                </Button>
-                <span className="text-sm">
-                  Page {pagination.page} of {pagination.totalPages}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPagination((prev) => ({ ...prev, page: prev.page + 1 }))}
-                  disabled={pagination.page >= pagination.totalPages}
-                >
-                  Next
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
+          {isLoading ? (
+            <div className="flex justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : cases.length === 0 ? (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <p className="text-muted-foreground mb-4">No cases found</p>
+                <Link href="/cases/new">
+                  <Button>Create your first case</Button>
+                </Link>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4">
+              {cases.map((c) => (
+                <Link key={c.id} href={`/cases/${c.id}`}>
+                  <Card className="hover:border-primary transition-colors cursor-pointer">
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <CardTitle className="text-lg">{c.title}</CardTitle>
+                          <CardDescription>{c.caseNumber}</CardDescription>
+                        </div>
+                        <Badge variant="outline">{c.status}</Badge>
+                      </div>
+                    </CardHeader>
+                    {c.description && (
+                      <CardContent>
+                        <p className="text-sm text-muted-foreground">{c.description}</p>
+                      </CardContent>
+                    )}
+                  </Card>
+                </Link>
+              ))}
             </div>
           )}
         </div>
