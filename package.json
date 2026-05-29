@@ -30,8 +30,13 @@
     "prettier": "^3.2.5",
     "tsx": "^4.11.0",
     "ts-node": "^10.9.2"
-     969bcae (feat: implement relationship graph V1)
-    "typescript": "^5.4.0"
+  },
+  "devDependencies": {
+  "@types/node": "^20.11.0",
+  "prisma": "^5.14.0",
+  "ts-node": "^10.9.2",
+  "tsx": "^4.11.0",
+  "typescript": "^5.4.0"
   },
   "engines": {
     "node": ">=20.0.0",
