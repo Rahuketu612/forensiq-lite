@@ -556,12 +556,100 @@ export interface FundTrailResult {
   auditTrail: FundTrailAuditEntry[];
 }
 
+// Fund Trail Patterns
+export type PatternType = 'CIRCULAR_FLOW' | 'LAYERING' | 'ROUND_TRIPPING' | 'REPEATED_CHAIN';
+
+export interface FundTrailPattern {
+  id: string;
+  caseId: string;
+  patternType: PatternType;
+  title: string;
+  explanation: string;
+  confidenceScore: number;
+  totalAmount: number | null;
+  transactionIds: string[];
+  counterparties: string[];
+  timeWindowStart: string | null;
+  timeWindowEnd: string | null;
+  reviewed: boolean;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  status: 'OPEN' | 'UNDER_REVIEW' | 'RESOLVED' | 'FALSE_POSITIVE';
+  createdAt: string;
+  createdBy?: { id: string; name: string; email: string };
+}
+
+export interface PatternAnalysisResult {
+  caseId: string;
+  patternsDetected: number;
+  byType: Record<string, number>;
+  patterns: Array<{
+    patternType: PatternType;
+    title: string;
+    explanation: string;
+    confidenceScore: number;
+    totalAmount: number | null;
+    transactionIds: string[];
+    counterparties: string[];
+    timeWindowStart: Date | null;
+    timeWindowEnd: Date | null;
+  }>;
+  auditTrail: FundTrailAuditEntry[];
+}
+
+export interface PatternSummary {
+  patterns: FundTrailPattern[];
+  summary: {
+    total: number;
+    byType: Record<string, number>;
+  };
+}
+
+export interface PatternDetail {
+  pattern: FundTrailPattern;
+  transactions: Array<{
+    id: string;
+    date: string;
+    amount: number;
+    type: string;
+    counterparty: string | null;
+    description: string | null;
+  }>;
+}
+
+export interface AnalyzePatternsOptions {
+  layeringTimeWindowDays?: number;
+  layeringAmountTolerance?: number;
+  roundTrippingDays?: number;
+  roundTrippingTolerance?: number;
+  minChainLength?: number;
+}
+
 export const fundTrailApi = {
   getFundTrail: (caseId: string): Promise<FundTrailResult> =>
     request<FundTrailResult>(`/cases/${caseId}/fund-trail`),
 
   generateFundTrail: (caseId: string): Promise<FundTrailResult> =>
     request<FundTrailResult>(`/cases/${caseId}/fund-trail/generate`, { method: 'POST' }),
+
+  // Pattern Analysis
+  analyzePatterns: (caseId: string, options?: AnalyzePatternsOptions): Promise<PatternAnalysisResult> =>
+    request<PatternAnalysisResult>(`/cases/${caseId}/fund-trail/analyze`, {
+      method: 'POST',
+      body: JSON.stringify(options || {}),
+    }),
+
+  getPatterns: (caseId: string): Promise<PatternSummary> =>
+    request<PatternSummary>(`/cases/${caseId}/fund-trail/patterns`),
+
+  getPattern: (caseId: string, patternId: string): Promise<PatternDetail> =>
+    request<PatternDetail>(`/cases/${caseId}/fund-trail/patterns/${patternId}`),
+
+  updatePatternStatus: (caseId: string, patternId: string, status: string): Promise<{ message: string }> =>
+    request<{ message: string }>(`/cases/${caseId}/fund-trail/patterns/${patternId}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ status }),
+    }),
 
   deleteLink: (caseId: string, linkId: string): Promise<void> =>
     request<void>(`/cases/${caseId}/fund-trail/links/${linkId}`, { method: 'DELETE' }),

@@ -42,3 +42,13 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 export * from '@prisma/client';
+
+// Re-export enums explicitly for better IDE support
+export { PatternType, InvestigationStatus } from '@prisma/client';
+
+// Extend Prisma namespace for custom types
+declare global {
+  namespace Prisma {
+    type PatternType = 'CIRCULAR_FLOW' | 'LAYERING' | 'ROUND_TRIPPING' | 'REPEATED_CHAIN';
+  }
+}

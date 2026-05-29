@@ -5,9 +5,11 @@ import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts';
 import FundTrailPanel from '@/components/fund-trail-panel';
+import PatternsPanel from '@/components/patterns-panel';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
-import { Loader2, ArrowLeft, FileText } from 'lucide-react';
+import { Loader2, ArrowLeft, FileText, GitBranch } from 'lucide-react';
 
 export default function FundTrailPage() {
   const router = useRouter();
@@ -17,9 +19,8 @@ export default function FundTrailPage() {
   const [caseName, setCaseName] = useState<string>('');
 
   const fetchCaseName = useCallback(async () => {
-    // Fetch case details to get the name
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('forensiq_token');
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/cases/${caseId}`,
         { headers: { Authorization: `Bearer ${token}` } }
@@ -73,7 +74,26 @@ export default function FundTrailPage() {
 
       {/* Main Content */}
       <main className="container py-8">
-        <FundTrailPanel caseId={caseId} />
+        <Tabs defaultValue="links">
+          <TabsList className="mb-6">
+            <TabsTrigger value="links">
+              <FileText className="h-4 w-4 mr-2" />
+              Transaction Links
+            </TabsTrigger>
+            <TabsTrigger value="patterns">
+              <GitBranch className="h-4 w-4 mr-2" />
+              Pattern Analysis
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="links">
+            <FundTrailPanel caseId={caseId} />
+          </TabsContent>
+          
+          <TabsContent value="patterns">
+            <PatternsPanel caseId={caseId} />
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );

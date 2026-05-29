@@ -91,8 +91,12 @@ enum TimelineEventType {
   TRANSACTION_IMPORTED
   TRANSACTION_EXAMINED
   FUND_TRAIL_GENERATED
+  FUND_TRAIL_PATTERNS_ANALYZED
   TRANSACTION_LINK_CREATED
   TRANSACTION_LINK_DELETED
+  PATTERN_DETECTED
+  PATTERN_REVIEWED
+  PATTERN_STATUS_CHANGED
 }
 
 enum LinkReason {
@@ -106,6 +110,13 @@ enum LinkReason {
   SUSPICIOUS_PATTERN
 }
 
+enum PatternType {
+  CIRCULAR_FLOW
+  LAYERING
+  ROUND_TRIPPING
+  REPEATED_CHAIN
+}
+
 enum AuditAction {
   CREATED
   UPDATED
@@ -114,6 +125,9 @@ enum AuditAction {
   LINK_CREATED
   LINK_DELETED
   TRAIL_GENERATED
+  PATTERN_DETECTED
+  PATTERN_REVIEWED
+  PATTERN_STATUS_CHANGED
   EXPORTED
 }
 
@@ -142,6 +156,7 @@ model User {
   auditLogs           AuditLog[]
   transactionLinksCreated TransactionLink[]   @relation("LinkCreator")
   transactionLinksDeleted TransactionLink[]   @relation("LinkDeleter")
+  fundTrailPatternsCreated FundTrailPattern[] @relation("PatternCreator")
 
   @@index([email])
 }
@@ -195,6 +210,7 @@ model Case {
   evidenceFiles  EvidenceFile[]
   timelines      InvestigationTimeline[]
   transactionLinks TransactionLink[]
+  fundTrailPatterns FundTrailPattern[]
 
   @@index([caseNumber])
   @@index([status])
@@ -425,6 +441,7 @@ model InvestigationTimeline {
   caseId       String
   redFlagId    String?
   transactionId String?
+  patternId    String?
   eventType    TimelineEventType
   title        String
   description  String?
@@ -436,11 +453,48 @@ model InvestigationTimeline {
   redFlag      RedFlag?           @relation(fields: [redFlagId], references: [id])
   transaction  Transaction?      @relation(fields: [transactionId], references: [id])
   user         User               @relation(fields: [userId], references: [id])
+  pattern      FundTrailPattern?  @relation(fields: [patternId], references: [id])
 
   @@index([caseId])
   @@index([redFlagId])
   @@index([transactionId])
+  @@index([patternId])
   @@index([userId])
   @@index([eventType])
+  @@index([createdAt])
+}
+
+model FundTrailPattern {
+  id               String           @id @default(uuid())
+  caseId           String
+  patternType      PatternType
+  title            String
+  explanation      String
+  confidenceScore  Float
+  totalAmount      Float?
+  
+  transactionIds   String[]
+  counterparties   String[]
+  
+  timeWindowStart  DateTime?
+  timeWindowEnd    DateTime?
+  
+  reviewed        Boolean          @default(false)
+  reviewedBy      String?
+  reviewedAt      DateTime?
+  status          InvestigationStatus @default(OPEN)
+  
+  createdById      String
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  createdBy       User             @relation("PatternCreator", fields: [createdById], references: [id])
+  case            Case             @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  timelines       InvestigationTimeline[]
+
+  @@index([caseId])
+  @@index([patternType])
+  @@index([status])
+  @@index([reviewed])
   @@index([createdAt])
 }
