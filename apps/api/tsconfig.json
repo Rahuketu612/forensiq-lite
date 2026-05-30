@@ -10,7 +10,8 @@
     "strictPropertyInitialization": false,
     "paths": {
       "@/*": ["src/*"]
-    }
+    },
+    "skipLibCheck": true
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "build", "test", "**/__tests__", "**/*.test.ts", "**/*.spec.ts"]

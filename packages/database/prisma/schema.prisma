@@ -176,6 +176,12 @@ model User {
   aiAnalyses          AiAnalysis[]
   generatedReports    GeneratedReport[]
 
+  // Pilot feedback relations
+  feedbackResponses   PilotFeedback[]       @relation("FeedbackResponder")
+  feedbackComments     FeedbackComment[]
+  featureVotes         FeatureVote[]
+  narrativesApproved   InvestigationNarrative[] @relation("NarrativeApprover")
+
   @@index([email])
 }
 
@@ -235,6 +241,7 @@ model Case {
   graphAuditLogs GraphAuditLog[]
   aiAnalyses     AiAnalysis[]
   generatedReports GeneratedReport[]
+  narratives     InvestigationNarrative[]
 
   @@index([caseNumber])
   @@index([status])
@@ -812,4 +819,386 @@ model AiAnalysis {
   @@index([analysisType])
   @@index([createdAt])
   @@index([createdById])
+}
+
+// =============================================================================
+// PILOT MANAGEMENT MODELS
+// =============================================================================
+
+enum PilotStatus {
+  PROPOSED
+  ACTIVE
+  PAUSED
+  COMPLETED
+  CANCELLED
+}
+
+enum PilotPhase {
+  DISCOVERY
+  DEMO
+  TRIAL
+  EVALUATION
+  DECISION
+}
+
+model Pilot {
+  id                String       @id @default(uuid())
+  caseId            String?      @unique  // Linked to investigation case
+  firmName          String
+  firmSize          String?      // "small", "medium", "large"
+  contactName       String
+  contactEmail      String
+  contactPhone      String?
+  pilotStatus       PilotStatus  @default(PROPOSED)
+  currentPhase      PilotPhase   @default(DISCOVERY)
+  startDate         DateTime?
+  endDate           DateTime?
+  objectives        String[]     @default([])
+  successCriteria   Json?        // Array of success criteria
+  notes             String?      @db.Text
+  assignedToId      String?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  // Relations
+  demos             PilotDemo[]
+  feedback          PilotFeedback[]
+  votes             FeatureVote[]
+  activities        PilotActivity[]
+  metrics           PilotMetric[]
+
+  @@index([pilotStatus])
+  @@index([currentPhase])
+  @@index([contactEmail])
+}
+
+model PilotDemo {
+  id              String    @id @default(uuid())
+  pilotId         String
+  demoDate        DateTime
+  demoType        String    // "discovery", "product", "technical", "management"
+  attendees       String[]  @default([])
+  duration        Int?      // minutes
+  outcome         String?   // "positive", "neutral", "negative"
+  nextSteps       String?   @db.Text
+  followUpDate    DateTime?
+  notes           String?   @db.Text
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  pilot           Pilot     @relation(fields: [pilotId], references: [id], onDelete: Cascade)
+
+  @@index([pilotId])
+  @@index([demoDate])
+}
+
+model PilotActivity {
+  id          String    @id @default(uuid())
+  pilotId     String
+  activity    String    // "logged_in", "created_case", "imported_data", "used_feature"
+  metadata    Json?     // Additional context
+  createdAt   DateTime  @default(now())
+
+  pilot       Pilot     @relation(fields: [pilotId], references: [id], onDelete: Cascade)
+
+  @@index([pilotId])
+  @@index([activity])
+  @@index([createdAt])
+}
+
+model PilotMetric {
+  id              String    @id @default(uuid())
+  pilotId         String
+  metricType      String    // "cases_created", "transactions_analyzed", "flags_reviewed", "reports_generated"
+  value           Float
+  periodStart     DateTime
+  periodEnd       DateTime
+  metadata        Json?
+  createdAt       DateTime  @default(now())
+
+  pilot           Pilot     @relation(fields: [pilotId], references: [id], onDelete: Cascade)
+
+  @@index([pilotId])
+  @@index([metricType])
+  @@index([createdAt])
+}
+
+// =============================================================================
+// FEEDBACK ENGINE MODELS
+// =============================================================================
+
+enum FeedbackType {
+  BUG
+  FEATURE_REQUEST
+  USABILITY
+  PERFORMANCE
+  DOCUMENTATION
+  GENERAL
+}
+
+enum FeedbackPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum FeedbackStatus {
+  SUBMITTED
+  REVIEWED
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+  DECLINED
+}
+
+enum FeedbackSentiment {
+  POSITIVE
+  NEUTRAL
+  NEGATIVE
+}
+
+model PilotFeedback {
+  id              String             @id @default(uuid())
+  pilotId         String
+  feedbackType    FeedbackType
+  subject         String
+  description      String             @db.Text
+  priority        FeedbackPriority   @default(MEDIUM)
+  status          FeedbackStatus     @default(SUBMITTED)
+  sentiment       FeedbackSentiment?
+  pageUrl         String?            // Which page the feedback relates to
+  browserInfo     Json?              // Browser/OS info
+  screenshotUrl   String?
+  response        String?            @db.Text
+  respondedById   String?
+  respondedAt     DateTime?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  pilot           Pilot              @relation(fields: [pilotId], references: [id], onDelete: Cascade)
+  respondedBy     User?              @relation("FeedbackResponder", fields: [respondedById], references: [id])
+
+  comments        FeedbackComment[]
+
+  @@index([pilotId])
+  @@index([feedbackType])
+  @@index([status])
+  @@index([priority])
+  @@index([createdAt])
+}
+
+model FeedbackComment {
+  id          String    @id @default(uuid())
+  feedbackId  String
+  userId      String
+  comment     String    @db.Text
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  feedback    PilotFeedback @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+  user        User          @relation(fields: [userId], references: [id])
+
+  @@index([feedbackId])
+  @@index([userId])
+}
+
+// =============================================================================
+// FEATURE VOTING SYSTEM
+// =============================================================================
+
+enum VoteStatus {
+  OPEN
+  UNDER_REVIEW
+  PLANNED
+  IN_PROGRESS
+  COMPLETED
+  DECLINED
+}
+
+model FeatureRequest {
+  id              String       @id @default(uuid())
+  title           String
+  description     String       @db.Text
+  category        String       // "import", "analysis", "reporting", "ai", "ui", "api"
+  voteCount       Int          @default(0)
+  status          VoteStatus   @default(OPEN)
+  submittedBy     String?      // User ID or pilot ID
+  submittedByType String?      // "user" or "pilot"
+  plannedFor      String?      // Version or milestone
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  votes           FeatureVote[]
+
+  @@index([status])
+  @@index([voteCount])
+  @@index([category])
+}
+
+model FeatureVote {
+  id              String         @id @default(uuid())
+  featureId       String
+  pilotId         String?
+  userId          String?
+  voteType        String         // "upvote", "downvote"
+  comment         String?        @db.Text
+  createdAt       DateTime       @default(now())
+
+  feature         FeatureRequest @relation(fields: [featureId], references: [id], onDelete: Cascade)
+  pilot           Pilot?         @relation(fields: [pilotId], references: [id], onDelete: SetNull)
+  user            User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@unique([featureId, pilotId, userId])
+  @@index([featureId])
+  @@index([pilotId])
+}
+
+// =============================================================================
+// INVESTIGATION NARRATIVE ENGINE V1
+// =============================================================================
+
+enum NarrativeSection {
+  TIMELINE
+  OBSERVATIONS
+  OPEN_QUESTIONS
+  EVIDENCE_GAPS
+  RECOMMENDATIONS
+}
+
+enum NarrativeStatus {
+  DRAFT
+  GENERATED
+  REVIEWED
+  APPROVED
+  ARCHIVED
+}
+
+model InvestigationNarrative {
+  id              String           @id @default(uuid())
+  caseId          String
+  version         Int              @default(1)
+  status          NarrativeStatus  @default(DRAFT)
+  generatedBy     String?          // "system", "ai", or userId
+  prompt          String?          @db.Text  // Original prompt if AI-generated
+  title           String
+  summary         String?          @db.Text
+  
+  // Narrative sections stored as JSON for flexibility
+  timeline        Json?            // Chronological events
+  observations    Json?            // Key observations
+  openQuestions   Json?            // Unanswered questions
+  evidenceGaps    Json?            // Missing evidence
+  recommendations Json?            // Suggested actions
+  
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  approvedAt      DateTime?
+  approvedById    String?
+
+  case            Case             @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  approvedBy      User?            @relation("NarrativeApprover", fields: [approvedById], references: [id])
+
+  versions        NarrativeVersion[]
+
+  @@unique([caseId, version])
+  @@index([caseId])
+  @@index([status])
+}
+
+model NarrativeVersion {
+  id              String                 @id @default(uuid())
+  narrativeId     String
+  version          Int
+  title           String
+  summary          String?               @db.Text
+  
+  // Snapshot of all sections at this version
+  timeline        Json?
+  observations    Json?
+  openQuestions   Json?
+  evidenceGaps    Json?
+  recommendations Json?
+  
+  // Metadata
+  changeNotes     String?               @db.Text  // What changed from previous version
+  generatedBy     String?               // "system", "ai", or userId
+  createdAt       DateTime              @default(now())
+
+  narrative       InvestigationNarrative @relation(fields: [narrativeId], references: [id], onDelete: Cascade)
+
+  @@unique([narrativeId, version])
+  @@index([narrativeId])
+}
+
+// =============================================================================
+// COMPREHENSIVE AUDIT LOG
+// =============================================================================
+
+enum AuditEntityType {
+  USER
+  CASE
+  TRANSACTION
+  RED_FLAG
+  ENTITY
+  REPORT
+  PILOT
+  FEEDBACK
+  FEATURE_REQUEST
+  NARRATIVE
+  API_REQUEST
+}
+
+model ComprehensiveAuditLog {
+  id              String           @id @default(uuid())
+  timestamp       DateTime         @default(now())
+  
+  // Who
+  userId          String?
+  userEmail       String?
+  userRole        String?
+  sessionId       String?
+  
+  // What
+  action          String           // CREATE, READ, UPDATE, DELETE, LOGIN, LOGOUT, EXPORT, etc.
+  entityType      AuditEntityType
+  entityId        String
+  entityName      String?          // Human-readable entity identifier
+  
+  // Where
+  ipAddress       String?
+  userAgent       String?
+  endpoint        String?          // API endpoint if applicable
+  method          String?          // HTTP method
+  
+  // Details
+  previousState   Json?            // State before change
+  newState        Json?            // State after change
+  metadata        Json?            // Additional context
+  
+  // Case context (for investigation-related actions)
+  caseId          String?
+  
+  // Risk assessment
+  riskLevel       String?          // LOW, MEDIUM, HIGH, CRITICAL
+  riskIndicators  String[]         @default([])
+  
+  // AI-specific
+  aiModel         String?
+  aiPrompt        String?          @db.Text
+  aiResponse      String?          @db.Text
+  
+  // Compliance
+  dataSensitivity String?          // PUBLIC, INTERNAL, CONFIDENTIAL, RESTRICTED
+  retentionPeriod Int?             // Days to retain
+  
+  createdAt       DateTime         @default(now())
+
+  @@index([timestamp])
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@index([caseId])
+  @@index([action])
+  @@index([ipAddress])
+  @@index([riskLevel])
 }

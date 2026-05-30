@@ -17,6 +17,11 @@ import { EntityResolutionModule } from './modules/entity-resolution/entity-resol
 import { InvestigationGraphModule } from './modules/investigation-graph/investigation-graph.module';
 import { InvestigationAiModule } from './modules/investigation-ai/investigation-ai.module';
 import { IntelligenceModule } from './modules/intelligence/intelligence.module';
+import { PilotModule } from './modules/pilot/pilot.module';
+import { FeedbackModule } from './modules/feedback/feedback.module';
+import { FeatureVoteModule } from './modules/feature-vote/feature-vote.module';
+import { NarrativeModule } from './modules/narrative/narrative.module';
+import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { JwtAuthGuard, RolesGuard } from './modules/auth/guards';
 import { GlobalExceptionFilter } from './common/middlewares';
 
@@ -51,6 +56,11 @@ import { GlobalExceptionFilter } from './common/middlewares';
     InvestigationGraphModule,
     InvestigationAiModule,
     IntelligenceModule,
+    PilotModule,
+    FeedbackModule,
+    FeatureVoteModule,
+    NarrativeModule,
+    AnalyticsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },
