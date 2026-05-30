@@ -166,6 +166,65 @@ export class InvestigationReportDto {
 
   @ApiProperty({ description: 'Report disclaimer' })
   disclaimer: string;
+
+  // V2 Report Sections
+  @ApiPropertyOptional({ description: 'Fund trail patterns' })
+  fundTrail?: Array<{
+    id: string;
+    type: string;
+    description: string;
+    totalAmount: number;
+    transactionCount: number;
+    transactions: Array<{
+      id: string;
+      date: string;
+      amount: number;
+      counterparty: string;
+    }>;
+  }>;
+
+  @ApiPropertyOptional({ description: 'Entity resolution data' })
+  entityResolution?: Array<{
+    id: string;
+    name: string;
+    type: string;
+    confidence: number;
+    totalTransactions: number;
+    totalAmount: number;
+  }>;
+
+  @ApiPropertyOptional({ description: 'Relationship graph' })
+  relationshipGraph?: {
+    nodes: Array<{
+      id: string;
+      label: string;
+      type: string;
+      properties: Record<string, any>;
+    }>;
+    edges: Array<{
+      id: string;
+      source: string;
+      target: string;
+      weight: number;
+      type: string;
+    }>;
+  };
+
+  @ApiPropertyOptional({ description: 'AI-generated observations' })
+  aiObservations?: Array<{
+    id: string;
+    type: string;
+    summary: string;
+    model: string;
+    createdAt: string;
+  }>;
+
+  @ApiPropertyOptional({ description: 'Evidence gaps identified' })
+  evidenceGaps?: Array<{
+    id: string;
+    description: string;
+    priority: 'high' | 'medium' | 'low';
+  }>;
 }
 
 export class ReportExportQueryDto {
@@ -180,4 +239,7 @@ export class ReportExportQueryDto {
 
   @ApiPropertyOptional({ description: 'Minimum severity for flags (default: HIGH)' })
   minSeverity?: RedFlagSeverity;
+
+  @ApiPropertyOptional({ description: 'Report type: EXECUTIVE, DETAILED, BOARD' })
+  reportType?: string;
 }

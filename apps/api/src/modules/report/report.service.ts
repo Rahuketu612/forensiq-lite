@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { prisma, RedFlagSeverity } from '@forensiq/database';
+import { prisma, RedFlagSeverity, ReportType, ReportFormat, AnalysisType } from '@forensiq/database';
 import {
   InvestigationReportDto,
   CaseSummaryDto,
@@ -13,12 +13,16 @@ import {
 
 @Injectable()
 export class ReportService {
-  private readonly reportVersion = '1.0.0';
+  private readonly reportVersion = '2.0.0';
 
   /**
    * Generate investigation report data
    */
-  async generateReport(caseId: string, userId: string, options?: ReportExportQueryDto): Promise<InvestigationReportDto> {
+  async generateReport(
+    caseId: string, 
+    userId: string, 
+    options?: ReportExportQueryDto
+  ): Promise<InvestigationReportDto> {
     const caseData = await this.getCaseData(caseId);
     
     const transactionStats = await this.getTransactionStats(caseId);
@@ -27,8 +31,13 @@ export class ReportService {
     const notes = await this.getInvestigationNotes(caseId);
     const evidence = await this.getEvidenceFiles(caseId);
     const timeline = await this.getTimeline(caseId, options);
+    const fundTrail = await this.getFundTrailPatterns(caseId);
+    const entities = await this.getEntityResolution(caseId);
+    const graph = await this.getRelationshipGraph(caseId);
+    const aiObservations = await this.getAiObservations(caseId);
+    const evidenceGaps = await this.getEvidenceGaps(caseId);
 
-    return {
+    const report: InvestigationReportDto = {
       reportMeta: {
         generatedAt: new Date().toISOString(),
         generatedBy: userId,
@@ -47,8 +56,40 @@ export class ReportService {
         hashAlgorithm: 'SHA-256',
         integrityVerified: evidence.length > 0,
       },
-      disclaimer: 'This report is an investigation aid and does not independently conclude fraud. All findings require auditor review and professional judgment.',
+      disclaimer: 'This report is an investigation aid and does not independently conclude fraud or criminal conduct. All findings require auditor review and professional judgment. Observations are based on available data and patterns identified through analytical processes.',
+      // V2 additions
+      fundTrail,
+      entityResolution: entities,
+      relationshipGraph: graph,
+      aiObservations,
+      evidenceGaps,
     };
+
+    // Store generated report
+    await prisma.generatedReport.create({
+      data: {
+        caseId,
+        type: options?.reportType as ReportType || ReportType.DETAILED,
+        format: ReportFormat.HTML,
+        title: `${caseData.title} - Investigation Report`,
+        content: JSON.stringify(report),
+        createdById: userId,
+        metadata: {
+          reportVersion: this.reportVersion,
+          sections: {
+            transactions: true,
+            redFlags: true,
+            fundTrail: fundTrail.length > 0,
+            entityResolution: entities.length > 0,
+            relationshipGraph: graph.nodes.length > 0,
+            aiObservations: aiObservations.length > 0,
+            evidenceGaps: evidenceGaps.length > 0,
+          },
+        } as any,
+      },
+    });
+
+    return report;
   }
 
   /**
@@ -524,5 +565,229 @@ export class ReportService {
     if (bytes < 1024) return bytes + ' B';
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
     return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  }
+
+  /**
+   * Get fund trail patterns
+   */
+  private async getFundTrailPatterns(caseId: string) {
+    const patterns = await prisma.fundTrailPattern.findMany({
+      where: { caseId },
+    });
+
+    return patterns.map(p => ({
+      id: p.id,
+      type: p.patternType,
+      description: p.explanation,
+      totalAmount: p.totalAmount || 0,
+      transactionCount: p.transactionIds.length,
+      transactions: [], // transaction details would need separate query
+    }));
+  }
+
+  /**
+   * Get entity resolution data
+   */
+  private async getEntityResolution(caseId: string) {
+    const entities = await prisma.entity.findMany({
+      where: { caseId },
+    });
+
+    return entities.map(e => ({
+      id: e.id,
+      name: e.canonicalName,
+      type: 'ENTITY',
+      confidence: e.riskScore || 0,
+      totalTransactions: e.transactionCount || 0,
+      totalAmount: e.totalAmount || 0,
+    }));
+  }
+
+  /**
+   * Get relationship graph data
+   */
+  private async getRelationshipGraph(caseId: string) {
+    const nodes = await prisma.graphNode.findMany({ where: { caseId } });
+    const edges = await prisma.graphEdge.findMany({ where: { caseId } });
+
+    return {
+      nodes: nodes.map(n => ({
+        id: n.id,
+        label: n.label,
+        type: n.nodeType,
+        properties: n.metadata as Record<string, any> || {},
+      })),
+      edges: edges.map(e => ({
+        id: e.id,
+        source: e.sourceNodeId,
+        target: e.targetNodeId,
+        weight: e.confidenceScore || 1,
+        type: e.edgeType,
+      })),
+    };
+  }
+
+  /**
+   * Get AI observations from previous analyses
+   */
+  private async getAiObservations(caseId: string) {
+    const analyses = await prisma.aiAnalysis.findMany({
+      where: { caseId },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+    });
+
+    return analyses.map(a => ({
+      id: a.id,
+      type: a.analysisType,
+      summary: a.response.substring(0, 500) + (a.response.length > 500 ? '...' : ''),
+      model: a.modelName,
+      createdAt: a.createdAt.toISOString(),
+    }));
+  }
+
+  /**
+   * Get evidence gaps from AI analysis
+   */
+  private async getEvidenceGaps(caseId: string) {
+    // Look for evidence gap analyses
+    const gapAnalyses = await prisma.aiAnalysis.findMany({
+      where: { 
+        caseId,
+        analysisType: AnalysisType.EVIDENCE_GAPS,
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 1,
+    });
+
+    if (gapAnalyses.length === 0) return [];
+
+    // Parse the response for evidence gaps
+    const response = gapAnalyses[0].response;
+    const gaps: string[] = [];
+
+    // Simple extraction of bullet points
+    const lines = response.split('\n').filter(l => l.trim().startsWith('-') || l.trim().startsWith('*'));
+    lines.forEach(line => {
+      const gap = line.replace(/^[-*\s]+/, '').trim();
+      if (gap) gaps.push(gap);
+    });
+
+    return gaps.slice(0, 10).map((gap, i) => ({
+      id: `gap-${i}`,
+      description: gap,
+      priority: (i < 3 ? 'high' : 'medium') as 'high' | 'medium' | 'low',
+    }));
+  }
+
+  /**
+   * Generate Executive Summary Report
+   */
+  async generateExecutiveReport(caseId: string, userId: string, options?: ReportExportQueryDto) {
+    const fullReport = await this.generateReport(caseId, userId, { ...options, reportType: 'EXECUTIVE' as any });
+    
+    // Store as executive report
+    await prisma.generatedReport.create({
+      data: {
+        caseId,
+        type: ReportType.EXECUTIVE,
+        format: ReportFormat.HTML,
+        title: `${fullReport.caseSummary.title} - Executive Summary`,
+        content: JSON.stringify(fullReport),
+        createdById: userId,
+        metadata: { reportType: 'executive', reportVersion: this.reportVersion } as any,
+      },
+    });
+
+    return fullReport;
+  }
+
+  /**
+   * Generate Detailed Investigation Report
+   */
+  async generateDetailedReport(caseId: string, userId: string, options?: ReportExportQueryDto) {
+    const fullReport = await this.generateReport(caseId, userId, { ...options, reportType: 'DETAILED' as any });
+    
+    await prisma.generatedReport.create({
+      data: {
+        caseId,
+        type: ReportType.DETAILED,
+        format: ReportFormat.HTML,
+        title: `${fullReport.caseSummary.title} - Detailed Investigation Report`,
+        content: JSON.stringify(fullReport),
+        createdById: userId,
+        metadata: { reportType: 'detailed', reportVersion: this.reportVersion } as any,
+      },
+    });
+
+    return fullReport;
+  }
+
+  /**
+   * Generate Board Report
+   */
+  async generateBoardReport(caseId: string, userId: string, options?: ReportExportQueryDto) {
+    const fullReport = await this.generateReport(caseId, userId, { ...options, reportType: 'BOARD' as any });
+    
+    await prisma.generatedReport.create({
+      data: {
+        caseId,
+        type: ReportType.BOARD,
+        format: ReportFormat.HTML,
+        title: `${fullReport.caseSummary.title} - Board Report`,
+        content: JSON.stringify(fullReport),
+        createdById: userId,
+        metadata: { reportType: 'board', reportVersion: this.reportVersion } as any,
+      },
+    });
+
+    return fullReport;
+  }
+
+  /**
+   * Get stored reports for a case
+   */
+  async getStoredReports(caseId: string, reportType?: ReportType | undefined) {
+    const reports = await prisma.generatedReport.findMany({
+      where: { caseId, type: reportType || undefined },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+    });
+    
+    return reports.map(r => ({
+      id: r.id,
+      caseId: r.caseId,
+      type: r.type,
+      format: r.format,
+      title: r.title,
+      createdAt: r.createdAt.toISOString(),
+      createdById: r.createdById,
+    }));
+  }
+
+  /**
+   * Export report in different formats
+   */
+  async exportReport(reportId: string, format: ReportFormat) {
+    const report = await prisma.generatedReport.findUnique({
+      where: { id: reportId },
+    });
+
+    if (!report) throw new NotFoundException('Report not found');
+
+    const content = report.content ? JSON.parse(report.content) : null;
+
+    switch (format) {
+      case ReportFormat.PDF:
+        return { format: 'pdf', content, title: report.title };
+      case ReportFormat.DOCX:
+        return { format: 'docx', content, title: report.title };
+      case ReportFormat.HTML:
+        return { format: 'html', content, title: report.title };
+      case ReportFormat.JSON:
+        return { format: 'json', content: content || {}, title: report.title };
+      default:
+        return { format: 'json', content: content || {}, title: report.title };
+    }
   }
 }

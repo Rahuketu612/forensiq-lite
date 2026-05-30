@@ -8,7 +8,7 @@ import { api, Case } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, FileText, AlertTriangle, Activity, Loader2, Sparkles } from 'lucide-react';
+import { ArrowLeft, FileText, AlertTriangle, Activity, Loader2, Sparkles, Brain } from 'lucide-react';
 
 export default function CaseDetailPage() {
   const router = useRouter();
@@ -201,12 +201,39 @@ export default function CaseDetailPage() {
                   </CardContent>
                 </Card>
               </Link>
+
+              <Link href={`/cases/${caseId}/intelligence`}>
+                <Card className="hover:border-primary transition-colors cursor-pointer">
+                  <CardContent className="pt-6">
+                    <div className="flex items-center gap-3">
+                      <Brain className="h-8 w-8 text-purple-500" />
+                      <div>
+                        <h3 className="font-semibold">Intelligence</h3>
+                        <p className="text-sm text-muted-foreground">AI-powered investigation tools</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+
+              <Link href={`/cases/${caseId}/report`}>
+                <Card className="hover:border-primary transition-colors cursor-pointer">
+                  <CardContent className="pt-6">
+                    <div className="flex items-center gap-3">
+                      <FileText className="h-8 w-8 text-blue-500" />
+                      <div>
+                        <h3 className="font-semibold">Report</h3>
+                        <p className="text-sm text-muted-foreground">Generate investigation reports</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
             </div>
           </div>
 
           {/* Sidebar */}
           <div className="space-y-6">
-            {/* Timeline */}
             <Card>
               <CardHeader>
                 <CardTitle>Timeline</CardTitle>

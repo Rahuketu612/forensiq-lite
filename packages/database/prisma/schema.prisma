@@ -131,6 +131,20 @@ enum AuditAction {
   PATTERN_REVIEWED
   PATTERN_STATUS_CHANGED
   EXPORTED
+  REPORT_GENERATED
+}
+
+enum ReportType {
+  EXECUTIVE
+  DETAILED
+  BOARD
+}
+
+enum ReportFormat {
+  PDF
+  DOCX
+  HTML
+  JSON
 }
 
 model User {
@@ -160,6 +174,7 @@ model User {
   transactionLinksDeleted TransactionLink[]   @relation("LinkDeleter")
   fundTrailPatternsCreated FundTrailPattern[] @relation("PatternCreator")
   aiAnalyses          AiAnalysis[]
+  generatedReports    GeneratedReport[]
 
   @@index([email])
 }
@@ -219,6 +234,7 @@ model Case {
   graphEdges     GraphEdge[]
   graphAuditLogs GraphAuditLog[]
   aiAnalyses     AiAnalysis[]
+  generatedReports GeneratedReport[]
 
   @@index([caseNumber])
   @@index([status])
@@ -736,6 +752,31 @@ model GraphAuditLog {
 }
 
 // =============================================================================
+// REPORT MODELS - Investigation Report Generation
+// =============================================================================
+
+model GeneratedReport {
+  id           String       @id @default(uuid())
+  caseId       String
+  type         ReportType
+  format       ReportFormat
+  title        String
+  content      String?      @db.Text
+  filePath     String?
+  fileSize     Int?
+  metadata     Json?
+  createdAt    DateTime     @default(now())
+  createdById  String
+
+  case         Case         @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  createdBy    User         @relation(fields: [createdById], references: [id])
+
+  @@index([caseId])
+  @@index([createdAt])
+  @@index([createdById])
+}
+
+// =============================================================================
 // AI ANALYSIS MODELS - Audit Trail for AI Investigation Assistant
 // =============================================================================
 
@@ -745,6 +786,11 @@ enum AnalysisType {
   QUESTIONS
   EVIDENCE_GAPS
   FULL_ANALYSIS
+  CASE_BRIEF
+  RED_FLAG_EXPLAINER
+  INTERVIEW_QUESTIONS
+  EVIDENCE_REQUEST
+  SIMILAR_PATTERN
 }
 
 model AiAnalysis {
