@@ -1,0 +1,39 @@
+version: '3.8'
+
+# ===========================================
+# PORT ARCHITECTURE
+# ===========================================
+# PostgreSQL: 5432 (configurable via POSTGRES_PORT)
+# Frontend (Next.js): 3000
+# Backend API (NestJS): 3001
+# Future AI Service: 3002
+# Future Worker/Queue: 3003
+# Future OCR/Parser Service: 3004
+# ===========================================
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: forensiq-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-forensiq}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-forensiq_secure_password}
+      POSTGRES_DB: ${POSTGRES_DB:-forensiq}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-forensiq}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  default:
+    name: forensiq-network

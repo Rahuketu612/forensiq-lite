@@ -1,0 +1,11 @@
+extends ./.tsconfig.base.json,
+  node_modules/gts/tsconfig-goog.json,
+  { "include": ["src"], "exclude": ["node_modules"] }
+
+{
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "dist",
+    "jsx": "react-jsx"
+  }
+}

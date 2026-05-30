@@ -127,6 +127,11 @@ dist
 
 # pnpm
 .pnpm-store
+.pnpm-workspace.yaml
+
+# Turborepo
+.turbo/
+tsconfig.tsbuildinfo
 
 # yarn v3
 .pnp.*
@@ -141,3 +146,7 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# Build outputs
+apps/*/build
+packages/*/build
