@@ -1,0 +1,74 @@
+version: '3.8'
+
+# ===========================================
+# ForensiQ Lite - Production Stack
+# ===========================================
+# Port Architecture:
+# - PostgreSQL: 5432
+# - API: 3001
+# - Next.js Web: 3000
+# ===========================================
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: forensiq-postgres-prod
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-forensiq}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?forensiq_secure_password}
+      POSTGRES_DB: ${POSTGRES_DB:-forensiq}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data_prod:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-forensiq}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - forensiq-prod-network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: forensiq-api-prod
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-forensiq}:${POSTGRES_PASSWORD:?forensiq_secure_password}@postgres:5432/${POSTGRES_DB:-forensiq}
+      NODE_ENV: production
+      JWT_SECRET: ${JWT_SECRET:?change-this-secret-in-production}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-24h}
+      API_PORT: "3001"
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://localhost:11434}
+      OLLAMA_DEFAULT_MODEL: ${OLLAMA_DEFAULT_MODEL:-phi4}
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'wget --no-verbose --tries=1 --spider http://localhost:3001/api/health || exit 1']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - forensiq-prod-network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+volumes:
+  postgres_data_prod:
+    driver: local
+
+networks:
+  forensiq-prod-network:
+    driver: bridge

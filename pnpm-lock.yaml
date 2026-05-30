@@ -8,6 +8,9 @@ importers:
 
   .:
     devDependencies:
+      '@types/node':
+        specifier: ^20.11.0
+        version: 20.19.41
       eslint-plugin-simple-import-sort:
         specifier: ^13.0.0
         version: 13.0.0(eslint@8.57.1)
@@ -17,15 +20,15 @@ importers:
       prettier:
         specifier: ^3.2.5
         version: 3.8.3
-<<<<<<< HEAD
-      tsx:
-        specifier: ^4.11.0
-        version: 4.22.3
-=======
+      prisma:
+        specifier: ^5.14.0
+        version: 5.22.0
       ts-node:
         specifier: ^10.9.2
         version: 10.9.2(@types/node@20.19.41)(typescript@5.9.3)
->>>>>>> 969bcae (feat: implement relationship graph V1)
+      tsx:
+        specifier: ^4.11.0
+        version: 4.22.3
       typescript:
         specifier: ^5.4.0
         version: 5.9.3

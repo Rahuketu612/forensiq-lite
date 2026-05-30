@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_FILTER } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { HealthModule } from './modules/health/health.module';
@@ -18,6 +18,7 @@ import { InvestigationGraphModule } from './modules/investigation-graph/investig
 import { InvestigationAiModule } from './modules/investigation-ai/investigation-ai.module';
 import { IntelligenceModule } from './modules/intelligence/intelligence.module';
 import { JwtAuthGuard, RolesGuard } from './modules/auth/guards';
+import { GlobalExceptionFilter } from './common/middlewares';
 
 @Module({
   imports: [
@@ -54,6 +55,7 @@ import { JwtAuthGuard, RolesGuard } from './modules/auth/guards';
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
+    { provide: APP_FILTER, useClass: GlobalExceptionFilter },
   ],
 })
 export class AppModule {}

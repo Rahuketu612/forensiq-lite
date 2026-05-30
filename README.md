@@ -261,6 +261,75 @@ pnpm db:studio
 
 # Seed database
 pnpm db:seed
+
+# Backup database
+pnpm db:backup
+
+# Restore database from backup
+pnpm db:restore ./backups/forensiq_backup_YYYYMMDD_HHMMSS.sql.gz
+```
+
+## Production Deployment
+
+### Prerequisites
+
+- Docker and Docker Compose installed
+- Node.js >= 20.0.0 (for local development)
+- PostgreSQL 16 (or Docker container)
+
+### Docker Production Stack
+
+```bash
+# 1. Clone and navigate to project
+git clone https://github.com/Rahuketu612/forensiq-lite.git
+cd forensiq-lite
+
+# 2. Create production environment file
+cp .env.example .env
+# Edit .env and set:
+# - JWT_SECRET=your-secure-production-secret
+# - POSTGRES_PASSWORD=your-secure-db-password
+# - NODE_ENV=production
+
+# 3. Start production stack
+docker-compose -f docker-compose.prod.yml up -d
+
+# 4. Verify services
+curl http://localhost:3001/api/v1/health
+```
+
+### Production Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `JWT_SECRET` | Yes | Secure random string for JWT signing |
+| `POSTGRES_PASSWORD` | Yes | PostgreSQL database password |
+| `DATABASE_URL` | Auto | Constructed from Postgres vars |
+| `NODE_ENV` | Yes | Set to `production` |
+| `OLLAMA_BASE_URL` | No | Local AI service URL |
+| `OLLAMA_DEFAULT_MODEL` | No | Default AI model |
+
+### Backup & Restore
+
+```bash
+# Manual backup (requires PostgreSQL running)
+./scripts/backup.sh
+
+# Restore from backup
+./scripts/restore.sh ./backups/forensiq_backup_YYYYMMDD_HHMMSS.sql.gz
+```
+
+### Health Checks
+
+```bash
+# Full health check
+curl http://localhost:3001/api/v1/health
+
+# Liveness probe (for k8s)
+curl http://localhost:3001/api/v1/health/live
+
+# Readiness probe
+curl http://localhost:3001/api/v1/health/ready
 ```
 
 ## Environment Variables

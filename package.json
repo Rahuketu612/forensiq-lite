@@ -17,6 +17,8 @@
     "db:studio": "pnpm -F @forensiq/database exec prisma studio",
     "db:seed": "pnpm -F @forensiq/database exec tsx prisma/seed.ts",
     "db:reset": "pnpm -F @forensiq/database exec prisma migrate reset --force",
+    "db:backup": "bash scripts/backup.sh",
+    "db:restore": "bash scripts/restore.sh",
     "setup": "bash setup.sh",
     "setup:local": "node scripts/setup-local.js",
     "lint": "pnpm -r lint",
@@ -25,18 +27,14 @@
     "typecheck": "pnpm -r typecheck"
   },
   "devDependencies": {
+    "@types/node": "^20.11.0",
     "eslint-plugin-simple-import-sort": "^13.0.0",
     "eslint-plugin-tailwindcss": "^3.18.3",
     "prettier": "^3.2.5",
+    "prisma": "^5.14.0",
     "tsx": "^4.11.0",
-    "ts-node": "^10.9.2"
-  },
-  "devDependencies": {
-  "@types/node": "^20.11.0",
-  "prisma": "^5.14.0",
-  "ts-node": "^10.9.2",
-  "tsx": "^4.11.0",
-  "typescript": "^5.4.0"
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.0"
   },
   "engines": {
     "node": ">=20.0.0",
