@@ -11,6 +11,6 @@ import { PromptBuilderService } from './prompt-builder.service';
     OllamaService,
     PromptBuilderService,
   ],
-  exports: [InvestigationAiService],
+  exports: [InvestigationAiService, OllamaService],
 })
 export class InvestigationAiModule {}
